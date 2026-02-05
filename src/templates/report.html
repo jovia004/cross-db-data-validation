@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice Comparison Report</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; color: #222; }
+    h1 { font-size: 1.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.2rem; margin-top: 1.5rem; }
+    .meta { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .toc { background: #f5f5f5; padding: 1rem; border-radius: 6px; margin-bottom: 2rem; }
+    .toc a { color: #0066cc; text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc ul { list-style: none; padding-left: 0; margin: 0; }
+    .toc li { margin: 0.4rem 0; }
+    section { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f0f0f0; }
+    .notes, .recommendations { margin-top: 1rem; padding-left: 1.25rem; }
+    .notes ul, .recommendations ul { margin: 0.3rem 0; }
+    .difference-type { font-size: 0.85rem; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Invoice Comparison Report</h1>
+  <p class="meta">Compared sources: {{ compared_sources }}<br />Date of comparison: {{ run_datetime }}</p>
+
+  <nav class="toc">
+    <h2>Invoices in this run</h2>
+    <ul>
+      {% for e in toc_entries %}
+      <li><a href="#{{ e.anchor_id }}">Invoice {{ e.index }}: {{ e.guid }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  {% for section in sections %}
+  <section id="invoice-{{ loop.index }}">
+    <h2>Invoice GUID: {{ section.invoice_guid }}</h2>
+    <p class="meta">Compared sources: SQL Server (Field: UniqueCode) / PostgreSQL (Field: invoice_guid)</p>
+
+    <h3>Summary</h3>
+    <p>This section compares data for the above invoice between Primary (SQL Server) and Shadow (PostgreSQL).</p>
+
+    {% if section.differences %}
+    <h3>Key differences detected</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Table</th>
+          <th>Primary field (SQL Server)</th>
+          <th>Shadow field (PostgreSQL)</th>
+          <th>SQL Server value</th>
+          <th>PostgreSQL value</th>
+          <th>Difference type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in section.differences %}
+        <tr>
+          <td>{{ row.table_name }}</td>
+          <td>{{ row.primary_field }}</td>
+          <td>{{ row.shadow_field }}</td>
+          <td>{{ row.sql_server_value }}</td>
+          <td>{{ row.postgresql_value }}</td>
+          <td class="difference-type">{{ row.difference_type }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p><strong>No differences detected</strong> for this invoice.</p>
+    {% endif %}
+
+    {% if section.notes %}
+    <h3>Notes</h3>
+    <ul class="notes">
+      {% for note in section.notes %}
+      <li>{{ note }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3>Recommendations</h3>
+    <ul class="recommendations">
+      {% for rec in section.recommendations %}
+      <li>{{ rec }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</body>
+</html>

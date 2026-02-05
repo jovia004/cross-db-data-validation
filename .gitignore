@@ -1,0 +1,26 @@
+# Environment and secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# Reports (generated output)
+reports/*.html
+reports/*.pdf
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Distribution
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,478 @@
+{
+  "sample_count": 2,
+  "invoice_date_column": "CreatedOn",
+  "tables": {
+    "invoice": {
+      "primary_table": "Invoice",
+      "shadow_table": "invoice",
+      "business_key": {
+        "primary": "UniqueCode",
+        "shadow": "invoice_guid"
+      },
+      "columns": [
+        {
+          "primary": "InvoiceId",
+          "shadow": "invoice_id"
+        },
+        {
+          "primary": "UniqueCode",
+          "shadow": "invoice_guid"
+        },
+        {
+          "primary": "InternalId",
+          "shadow": "internal_id"
+        },
+        {
+          "primary": "PurchaseOrderNumber",
+          "shadow": "purchase_order_number"
+        },
+        {
+          "primary": "BillingAddress",
+          "shadow": "billing_address"
+        },
+        {
+          "primary": "ShippingAddress",
+          "shadow": "shipping_address"
+        },
+        {
+          "primary": "SubTotalExclTax",
+          "shadow": "sub_total_excl_tax"
+        },
+        {
+          "primary": "SubTotalInclTax",
+          "shadow": "sub_total_incl_tax"
+        },
+        {
+          "primary": "TaxAmount",
+          "shadow": "tax_amount"
+        },
+        {
+          "primary": "TaxRate",
+          "shadow": "tax_rate"
+        },
+        {
+          "primary": "Freight",
+          "shadow": "freight"
+        },
+        {
+          "primary": "FreightRate",
+          "shadow": "freight_rate"
+        },
+        {
+          "primary": "Discount",
+          "shadow": "discount"
+        },
+        {
+          "primary": "DiscountRate",
+          "shadow": "discount_rate"
+        },
+        {
+          "primary": "AdditionalFee",
+          "shadow": "additional_fee"
+        },
+        {
+          "primary": "Total",
+          "shadow": "total"
+        },
+        {
+          "primary": "Paid",
+          "shadow": "paid"
+        },
+        {
+          "primary": "DueDate",
+          "shadow": "due_date"
+        },
+        {
+          "primary": "Description",
+          "shadow": "description"
+        },
+        {
+          "primary": "Comment",
+          "shadow": "comment"
+        },
+        {
+          "primary": "CreatedOn",
+          "shadow": "created_on"
+        },
+        {
+          "primary": "UpdatedOn",
+          "shadow": "updated_on"
+        },
+        {
+          "primary": "IsDraft",
+          "shadow": "is_draft"
+        },
+        {
+          "primary": "IsSubmitted",
+          "shadow": "is_submitted"
+        },
+        {
+          "primary": "IsReceived",
+          "shadow": "is_received"
+        },
+        {
+          "primary": "DeleteReason",
+          "shadow": "delete_reason"
+        },
+        {
+          "primary": "Archived",
+          "shadow": "archived"
+        },
+        {
+          "primary": "Void",
+          "shadow": "void"
+        },
+        {
+          "primary": "LastSyncOn",
+          "shadow": "last_sync_on"
+        },
+        {
+          "primary": "DeviceId",
+          "shadow": "device_id"
+        },
+        {
+          "primary": "IsReceiptPrint",
+          "shadow": "is_receipt_print"
+        },
+        {
+          "primary": "GuestCount",
+          "shadow": "guest_count"
+        },
+        {
+          "primary": "IsLiability",
+          "shadow": "is_liability"
+        },
+        {
+          "primary": "RegisterUniqueCode",
+          "shadow": "register_unique_code"
+        },
+        {
+          "primary": "InvoiceStatus",
+          "shadow": "invoice_status"
+        },
+        {
+          "primary": "ReferenceId",
+          "shadow": "reference_id"
+        },
+        {
+          "primary": "TransactionId",
+          "shadow": "transaction_id"
+        },
+        {
+          "primary": "Tips",
+          "shadow": "tips"
+        },
+        {
+          "primary": "Surcharge",
+          "shadow": "surcharge"
+        },
+        {
+          "primary": "DiscountReason",
+          "shadow": "discount_reason"
+        },
+        {
+          "primary": "RefundReason",
+          "shadow": "refund_reason"
+        },
+        {
+          "primary": "PurchaseOrder",
+          "shadow": "purchase_order"
+        },
+        {
+          "primary": "ItemTotalExclTax",
+          "shadow": "item_total_excl_tax"
+        },
+        {
+          "primary": "ItemTax",
+          "shadow": "item_tax"
+        },
+        {
+          "primary": "DiscountExclTax",
+          "shadow": "discount_excl_tax"
+        },
+        {
+          "primary": "DiscountTax",
+          "shadow": "discount_tax"
+        },
+        {
+          "primary": "PosSurchargeExclTax",
+          "shadow": "pos_surcharge_excl_tax"
+        },
+        {
+          "primary": "PosSurchargeTax",
+          "shadow": "pos_surcharge_tax"
+        },
+        {
+          "primary": "BankSurcharge",
+          "shadow": "bank_surcharge"
+        },
+        {
+          "primary": "RoundingExclTax",
+          "shadow": "rounding_excl_tax"
+        },
+        {
+          "primary": "RoundingTax",
+          "shadow": "rounding_tax"
+        },
+        {
+          "primary": "IsTotalExcludingTipAmount",
+          "shadow": "is_total_excluding_tip_amount"
+        },
+        {
+          "primary": "CompletedOn",
+          "shadow": "completed_on"
+        },
+        {
+          "primary": "ReferenceNumber",
+          "shadow": "reference_number"
+        },
+        {
+          "primary": "ReservationId",
+          "shadow": "reservation_id"
+        },
+        {
+          "primary": "LoyaltyPayment",
+          "shadow": "loyalty_payment"
+        },
+        {
+          "primary": "SourcePlatform",
+          "shadow": "source_platform"
+        },
+        {
+          "primary": "DeliveryTime",
+          "shadow": "delivery_time"
+        },
+        {
+          "primary": "PickupTime",
+          "shadow": "pickup_time"
+        },
+        {
+          "primary": "BankSurchargeExcludingTax",
+          "shadow": "bank_surcharge_excluding_tax"
+        },
+        {
+          "primary": "OriginalOrderId",
+          "shadow": "original_order_id"
+        }
+      ]
+    },
+    "invoice_detail_item": {
+      "primary_table": "InvoiceDetailItem",
+      "shadow_table": "invoice_item",
+      "business_key": {
+        "primary": "UniqueCode",
+        "shadow": "unique_code"
+      },
+      "columns": [
+        {
+          "primary": "Description",
+          "shadow": "description"
+        },
+        {
+          "primary": "Quantity",
+          "shadow": "quantity"
+        },
+        {
+          "primary": "UnitPrice",
+          "shadow": "unit_price"
+        },
+        {
+          "primary": "TaxAmount",
+          "shadow": "tax_amount"
+        },
+        {
+          "primary": "TaxRate",
+          "shadow": "tax_rate"
+        },
+        {
+          "primary": "SubTotalExclTax",
+          "shadow": "sub_total_excl_tax"
+        },
+        {
+          "primary": "SubTotalInclTax",
+          "shadow": "sub_total_incl_tax"
+        },
+        {
+          "primary": "DiscountRate",
+          "shadow": "discount_rate"
+        },
+        {
+          "primary": "Discount",
+          "shadow": "discount"
+        },
+        {
+          "primary": "DeliveredAmount",
+          "shadow": "delivered_amount"
+        },
+        {
+          "primary": "CreatedOn",
+          "shadow": "created_on"
+        },
+        {
+          "primary": "IsRefund",
+          "shadow": "is_refund"
+        },
+        {
+          "primary": "RefundReason",
+          "shadow": "refund_reason"
+        },
+        {
+          "primary": "RefundOn",
+          "shadow": "refund_on"
+        },
+        {
+          "primary": "Note",
+          "shadow": "note"
+        },
+        {
+          "primary": "IsRedeemed",
+          "shadow": "is_redeemed"
+        },
+        {
+          "primary": "RewardPoint",
+          "shadow": "reward_point"
+        },
+        {
+          "primary": "Archived",
+          "shadow": "archived"
+        },
+        {
+          "primary": "DeleteReason",
+          "shadow": "delete_reason"
+        },
+        {
+          "primary": "IsLiability",
+          "shadow": "is_liability"
+        },
+        {
+          "primary": "UniqueCode",
+          "shadow": "unique_code"
+        },
+        {
+          "primary": "IsTakeaway",
+          "shadow": "is_takeaway"
+        },
+        {
+          "primary": "IsCancelled",
+          "shadow": "is_cancelled"
+        },
+        {
+          "primary": "DiscountReason",
+          "shadow": "discount_reason"
+        },
+        {
+          "primary": "UnitCostPrice",
+          "shadow": "unit_cost_price"
+        },
+        {
+          "primary": "DiscountExclTax",
+          "shadow": "discount_excl_tax"
+        },
+        {
+          "primary": "ModifiedQuantity",
+          "shadow": "modified_quantity"
+        },
+        {
+          "primary": "OriginalItemId",
+          "shadow": "original_item_id"
+        }
+      ],
+      "primary_invoice_fk_column": "Invoice"
+    },
+    "payment_transaction": {
+      "primary_table": "PaymentTransaction",
+      "shadow_table": "payment_transaction",
+      "business_key": {
+        "primary": "UniqueId",
+        "shadow": "unique_id"
+      },
+      "columns": [
+        {
+          "primary": "PaymentTransactionId",
+          "shadow": "payment_transaction_id"
+        },
+        {
+          "primary": "Amount",
+          "shadow": "amount"
+        },
+        {
+          "primary": "AuthorizationTransactionCode",
+          "shadow": "authorization_transaction_code"
+        },
+        {
+          "primary": "TransactionNumber",
+          "shadow": "transaction_number"
+        },
+        {
+          "primary": "TransactionReference",
+          "shadow": "transaction_reference"
+        },
+        {
+          "primary": "TransactionOption1",
+          "shadow": "transaction_option1"
+        },
+        {
+          "primary": "TransactionError",
+          "shadow": "transaction_error"
+        },
+        {
+          "primary": "CreatedOn",
+          "shadow": "created_on"
+        },
+        {
+          "primary": "UpdatedOn",
+          "shadow": "updated_on"
+        },
+        {
+          "primary": "PaymentMethod",
+          "shadow": "payment_method_id"
+        },
+        {
+          "primary": "PaymentTransactionType",
+          "shadow": "payment_transaction_type_id"
+        },
+        {
+          "primary": "Archived",
+          "shadow": "archived"
+        },
+        {
+          "primary": "Comment",
+          "shadow": "comment"
+        },
+        {
+          "primary": "UniqueId",
+          "shadow": "unique_id"
+        },
+        {
+          "primary": "MerchantCopy",
+          "shadow": "merchant_copy"
+        },
+        {
+          "primary": "PaymentTransactionType2",
+          "shadow": "payment_transaction_type2_id"
+        },
+        {
+          "primary": "IsNegativeCreditAccount",
+          "shadow": "is_negative_credit_account"
+        },
+        {
+          "primary": "OriginalTransactionReference",
+          "shadow": "original_transaction_reference"
+        },
+        {
+          "primary": "TipsPaymentReference",
+          "shadow": "tips_payment_reference"
+        },
+        {
+          "primary": "FurtherSurchargeAmount",
+          "shadow": "further_surcharge_amount"
+        },
+        {
+          "primary": "CreditCardType",
+          "shadow": "credit_account_id"
+        }
+      ],
+      "primary_invoice_fk_column": "Invoice"
+    }
+  }
+}
