@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoice Comparison Report</title>
   <style>
+    @page { size: A4; margin: 1.5cm; }
     body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; color: #222; }
     h1 { font-size: 1.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
     h2 { font-size: 1.2rem; margin-top: 1.5rem; }
@@ -15,12 +16,20 @@
     .toc ul { list-style: none; padding-left: 0; margin: 0; }
     .toc li { margin: 0.4rem 0; }
     section { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th, td { border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: left; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
+    thead { display: table-header-group; }
+    tbody tr { break-inside: avoid; page-break-inside: avoid; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; overflow-wrap: break-word; word-break: break-word; }
     th { background: #f0f0f0; }
+    .col-table { width: 12%; }
+    .col-primary-field { width: 13%; }
+    .col-shadow-field { width: 13%; }
+    .col-sql-value { width: 21%; }
+    .col-pg-value { width: 21%; }
+    .col-diff-type { width: 20%; }
     .notes, .recommendations { margin-top: 1rem; padding-left: 1.25rem; }
     .notes ul, .recommendations ul { margin: 0.3rem 0; }
-    .difference-type { font-size: 0.85rem; color: #666; }
+    .difference-type { font-size: 0.74rem; color: #666; }
   </style>
 </head>
 <body>
@@ -47,6 +56,14 @@
     {% if section.differences %}
     <h3>Key differences detected</h3>
     <table>
+      <colgroup>
+        <col class="col-table" />
+        <col class="col-primary-field" />
+        <col class="col-shadow-field" />
+        <col class="col-sql-value" />
+        <col class="col-pg-value" />
+        <col class="col-diff-type" />
+      </colgroup>
       <thead>
         <tr>
           <th>Table</th>
