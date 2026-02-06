@@ -13,9 +13,19 @@ Copy `.env.example` to `.env` in that folder and fill in your database credentia
 
 ## 2. Running on your Mac vs others (git)
 
-- **On your Mac:** Install Python 3.10+ (or 3.9), put `.env` in the project root, run `pip install -r requirements.txt`, then `python run.py`.
+- **On your Mac:** Install Python 3.10+ (or 3.9), put `.env` in the project root. Use a **virtual environment** (recommended on macOS to avoid “externally managed” pip errors):
+
+  ```bash
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install -r requirements.txt
+  python run.py
+  ```
+
+  If you see `ModuleNotFoundError: No module named 'dotenv'`, the dependencies are not installed in the environment you’re using—activate the venv (e.g. `source .venv/bin/activate`) and run `pip install -r requirements.txt` again.
+
 - **If you push to git and others use the repo:**  
-  They should clone the repo, **not** commit `.env`. Each person (or environment) creates their own `.env` from `.env.example` and fills in their DB credentials. They run `pip install -r requirements.txt` and then the same commands. So the tool is **portable**: no install “on the machine” beyond Python and pip; optional system dependencies (ODBC driver for SQL Server, WeasyPrint libraries for PDF) depend on their OS—see **Dependencies** below.
+  They should clone the repo, **not** commit `.env`. Each person (or environment) creates their own `.env` from `.env.example` and fills in their DB credentials. They run `pip install -r requirements.txt` (ideally inside a venv) and then the same commands. So the tool is **portable**: no install “on the machine” beyond Python and pip; optional system dependencies (ODBC driver for SQL Server, WeasyPrint libraries for PDF) depend on their OS—see **Dependencies** below.
 
 ---
 
