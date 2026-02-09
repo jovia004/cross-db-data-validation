@@ -213,23 +213,26 @@ def compare_invoice_sections(
     pay_cols = pay_cfg.get("columns", [])
     pay_bk = pay_cfg.get("business_key") or {}
 
+    def _norm_guid(g: Any) -> str:
+        return str(g).lower() if g is not None else ""
+
     shadow_inv_by_guid: dict[str, dict] = {}
     for r in shadow_invoices:
         g = r.get("invoice_guid")
         if g is not None:
-            shadow_inv_by_guid[str(g)] = r
+            shadow_inv_by_guid[_norm_guid(g)] = r
 
     shadow_items_by_guid: dict[str, list] = {}
     for r in shadow_items:
         g = r.get("invoice_guid")
         if g is not None:
-            shadow_items_by_guid.setdefault(str(g), []).append(r)
+            shadow_items_by_guid.setdefault(_norm_guid(g), []).append(r)
 
     shadow_payments_by_guid: dict[str, list] = {}
     for r in shadow_payments:
         g = r.get("invoice_guid")
         if g is not None:
-            shadow_payments_by_guid.setdefault(str(g), []).append(r)
+            shadow_payments_by_guid.setdefault(_norm_guid(g), []).append(r)
 
     primary_details_by_invoice: dict[Union[int, str], list] = {}
     detail_fk_col = detail_cfg.get("primary_invoice_fk_column", "InvoiceId")
@@ -250,7 +253,7 @@ def compare_invoice_sections(
         guid = inv.get("UniqueCode")
         if guid is None:
             continue
-        guid_str = str(guid)
+        guid_str = _norm_guid(guid)
         shadow_inv = shadow_inv_by_guid.get(guid_str)
 
         # Invoice-level comparison

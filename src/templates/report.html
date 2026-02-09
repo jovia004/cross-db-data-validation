@@ -6,55 +6,329 @@
   <title>Invoice Comparison Report</title>
   <style>
     @page { size: A4; margin: 1.5cm; }
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; color: #222; }
-    h1 { font-size: 1.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
-    h2 { font-size: 1.2rem; margin-top: 1.5rem; }
-    .meta { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
-    .toc { background: #f5f5f5; padding: 1rem; border-radius: 6px; margin-bottom: 2rem; }
-    .toc a { color: #0066cc; text-decoration: none; }
-    .toc a:hover { text-decoration: underline; }
-    .toc ul { list-style: none; padding-left: 0; margin: 0; }
-    .toc li { margin: 0.4rem 0; }
-    section { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
-    thead { display: table-header-group; }
-    tbody tr { break-inside: avoid; page-break-inside: avoid; }
-    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; overflow-wrap: break-word; word-break: break-word; }
-    th { background: #f0f0f0; }
-    .col-table { width: 12%; }
-    .col-primary-field { width: 13%; }
-    .col-shadow-field { width: 13%; }
-    .col-sql-value { width: 21%; }
-    .col-pg-value { width: 21%; }
-    .col-diff-type { width: 20%; }
-    .notes, .recommendations { margin-top: 1rem; padding-left: 1.25rem; }
-    .notes ul, .recommendations ul { margin: 0.3rem 0; }
-    .difference-type { font-size: 0.74rem; color: #666; }
+    :root {
+      --color-text: #1a1a1a;
+      --color-muted: #555;
+      --color-border: #ddd;
+      --color-bg-subtle: #f8f9fa;
+      --color-bg-toc: #f0f4f8;
+      --color-link: #0066cc;
+      --color-match: #0d7d4d;
+      --color-differences: #b8860b;
+      --color-missing: #c0392b;
+      --color-diff-value: #fff8e6;
+      --color-diff-missing: #ffebee;
+      --color-diff-type: #e3f2fd;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      color: var(--color-text);
+      line-height: 1.5;
+    }
+    /* HTML only: wider page so difference table fits on screen */
+    @media screen {
+      body {
+        max-width: 1400px;
+      }
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      border-bottom: 2px solid var(--color-border);
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-top: 1.25rem;
+      margin-bottom: 0.4rem;
+    }
+    .meta {
+      color: var(--color-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    /* Executive summary */
+    .exec-summary {
+      background: var(--color-bg-toc);
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--color-border);
+    }
+    .exec-summary h2 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+    }
+    .exec-summary .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      font-size: 0.95rem;
+    }
+    .exec-summary .stat {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .exec-summary .stat-num {
+      font-weight: 700;
+      color: var(--color-text);
+    }
+    /* TOC */
+    .toc {
+      background: var(--color-bg-toc);
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--color-border);
+    }
+    .toc a {
+      color: var(--color-link);
+      text-decoration: none;
+    }
+    .toc a:hover {
+      text-decoration: underline;
+    }
+    .toc ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+    .toc li {
+      margin: 0.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .toc .toc-guid {
+      flex: 1;
+      min-width: 0;
+    }
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .badge-match {
+      background: #d4edda;
+      color: var(--color-match);
+      border: 1px solid #a3d9a5;
+    }
+    .badge-differences {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #e6c200;
+    }
+    .badge-missing {
+      background: #f8d7da;
+      color: var(--color-missing);
+      border: 1px solid #f1aeb5;
+    }
+    /* Sections */
+    section {
+      margin-bottom: 2rem;
+      padding: 1.25rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--color-border);
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+    }
+    section .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+    }
+    section .section-header h2 {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+    .table-wrapper {
+      margin-top: 0.5rem;
+      overflow-x: auto;
+    }
+    @media screen {
+      .table-wrapper {
+        max-width: 100%;
+      }
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--color-border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+    th {
+      background: var(--color-bg-subtle);
+      font-weight: 600;
+    }
+    /* Difference-type row styling */
+    tr.diff-values_changed {
+      background: var(--color-diff-value);
+    }
+    tr.diff-only_in_primary,
+    tr.diff-only_in_shadow {
+      background: var(--color-diff-missing);
+    }
+    tr.diff-type_mismatch {
+      background: var(--color-diff-type);
+    }
+    .difference-type {
+      font-size: 0.85rem;
+      color: var(--color-muted);
+    }
+    .notes, .recommendations {
+      margin-top: 1rem;
+      padding-left: 1.25rem;
+    }
+    .notes ul, .recommendations ul {
+      margin: 0.3rem 0;
+    }
+    /* Print / PDF only */
+    @media print {
+      :root {
+        --color-bg-toc: #eee;
+        --color-diff-value: #fdf6e3;
+        --color-diff-missing: #fce4ec;
+        --color-diff-type: #e1f5fe;
+      }
+      body {
+        padding: 0.5rem;
+        max-width: 100%;
+      }
+      /* PDF: Executive Summary – avoid flex collapse, keep stats on one line */
+      .exec-summary .stats {
+        display: block;
+      }
+      .exec-summary .stat {
+        display: inline-block;
+        margin-right: 1.25rem;
+        white-space: nowrap;
+      }
+      .toc, .exec-summary {
+        break-inside: avoid;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        border: 1px solid #999;
+        box-shadow: none;
+      }
+      .badge-match, .badge-differences, .badge-missing {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      /* PDF: difference table – fit all 6 columns, prevent last 2 from being cut off */
+      .table-wrapper {
+        overflow: visible;
+      }
+      thead { display: table-header-group; }
+      tbody tr { break-inside: avoid; page-break-inside: avoid; }
+      .table-wrapper table {
+        table-layout: fixed;
+        width: 100%;
+        font-size: 0.7rem;
+      }
+      .table-wrapper th,
+      .table-wrapper td {
+        padding: 0.2rem 0.35rem;
+        overflow: hidden;
+        word-wrap: break-word;
+        word-break: break-word;
+      }
+      .table-wrapper th:nth-child(1),
+      .table-wrapper td:nth-child(1) { width: 10%; }
+      .table-wrapper th:nth-child(2),
+      .table-wrapper td:nth-child(2) { width: 14%; }
+      .table-wrapper th:nth-child(3),
+      .table-wrapper td:nth-child(3) { width: 14%; }
+      .table-wrapper th:nth-child(4),
+      .table-wrapper td:nth-child(4) { width: 22%; }
+      .table-wrapper th:nth-child(5),
+      .table-wrapper td:nth-child(5) { width: 22%; }
+      .table-wrapper th:nth-child(6),
+      .table-wrapper td:nth-child(6) { width: 18%; }
+      tr.diff-values_changed,
+      tr.diff-only_in_primary,
+      tr.diff-only_in_shadow,
+      tr.diff-type_mismatch {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      a[href^="#"] {
+        color: #333;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Invoice Comparison Report</h1>
+  <h1>📊 Invoice Comparison Report</h1>
   <p class="meta">Compared sources: {{ compared_sources }}<br />Date of comparison: {{ run_datetime }}</p>
 
+  <div class="exec-summary">
+    <h2>📈 Executive Summary</h2>
+    <div class="stats">
+      <span class="stat"><span class="stat-num">{{ summary.total }}</span> invoice{{ 's' if summary.total != 1 else '' }} compared</span>
+      <span class="stat">✅ <span class="stat-num">{{ summary.matched }}</span> match</span>
+      <span class="stat">⚠️ <span class="stat-num">{{ summary.with_differences }}</span> with differences</span>
+      <span class="stat">❌ <span class="stat-num">{{ summary.missing_in_shadow }}</span> missing in Shadow</span>
+    </div>
+  </div>
+
   <nav class="toc">
-    <h2>Invoices in this run</h2>
+    <h2>📑 Invoices in this run</h2>
     <ul>
       {% for e in toc_entries %}
-      <li><a href="#{{ e.anchor_id }}">Invoice {{ e.index }}: {{ e.guid }}</a></li>
+      <li>
+        {% if e.status == 'match' %}<span class="badge badge-match">✅ Match</span>{% endif %}
+        {% if e.status == 'differences' %}<span class="badge badge-differences">⚠️ Differences</span>{% endif %}
+        {% if e.status == 'missing_in_shadow' %}<span class="badge badge-missing">❌ Missing in Shadow</span>{% endif %}
+        <a href="#{{ e.anchor_id }}" class="toc-guid">Invoice {{ e.index }}: {{ e.guid }}</a>
+      </li>
       {% endfor %}
     </ul>
   </nav>
 
   {% for section in sections %}
   <section id="invoice-{{ loop.index }}">
-    <h2>Invoice GUID: {{ section.invoice_guid }}</h2>
+    <div class="section-header">
+      <h2>🧾 Invoice GUID: {{ section.invoice_guid }}</h2>
+      {% if section.status == 'match' %}<span class="badge badge-match">✅ Match</span>{% endif %}
+      {% if section.status == 'differences' %}<span class="badge badge-differences">⚠️ Differences</span>{% endif %}
+      {% if section.status == 'missing_in_shadow' %}<span class="badge badge-missing">❌ Missing in Shadow</span>{% endif %}
+    </div>
     <p class="meta">Compared sources: SQL Server (Field: UniqueCode) / PostgreSQL (Field: invoice_guid)</p>
 
-    <h3>Summary</h3>
+    <h3>📝 Summary</h3>
     <p>This section compares data for the above invoice between Primary (SQL Server) and Shadow (PostgreSQL).</p>
 
     {% if section.differences %}
-    <h3>Key differences detected</h3>
+    <h3>⚠️ Key differences detected</h3>
+    <div class="table-wrapper">
     <table>
       <colgroup>
         <col class="col-table" />
@@ -76,7 +350,7 @@
       </thead>
       <tbody>
         {% for row in section.differences %}
-        <tr>
+        <tr class="diff-{{ row.difference_type }}">
           <td>{{ row.table_name }}</td>
           <td>{{ row.primary_field }}</td>
           <td>{{ row.shadow_field }}</td>
@@ -87,12 +361,13 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}
-    <p><strong>No differences detected</strong> for this invoice.</p>
+    <p><strong>✅ No differences detected</strong> for this invoice.</p>
     {% endif %}
 
     {% if section.notes %}
-    <h3>Notes</h3>
+    <h3>📌 Notes</h3>
     <ul class="notes">
       {% for note in section.notes %}
       <li>{{ note }}</li>
@@ -100,7 +375,7 @@
     </ul>
     {% endif %}
 
-    <h3>Recommendations</h3>
+    <h3>💡 Recommendations</h3>
     <ul class="recommendations">
       {% for rec in section.recommendations %}
       <li>{{ rec }}</li>
