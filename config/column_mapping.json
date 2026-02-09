@@ -1,5 +1,5 @@
 {
-  "sample_count": 2,
+  "sample_count": 3,
   "invoice_date_column": "CreatedOn",
   "tables": {
     "invoice": {
@@ -21,6 +21,18 @@
         {
           "primary": "InternalId",
           "shadow": "internal_id"
+        },
+        {
+          "primary": "CustomerId",
+          "shadow": "customer_id"
+        },
+        {
+          "primary": "CompanyId",
+          "shadow": "company_id"
+        },
+        {
+          "primary": "PaymentMethodId",
+          "shadow": "payment_method_id"
         },
         {
           "primary": "PurchaseOrderNumber",
@@ -91,8 +103,16 @@
           "shadow": "comment"
         },
         {
-          "primary": "CreatedOn",
+          "primary": "CreatedBy",
+          "shadow": "created_by_id"
+        },
+        {
+          "primary": "CreatedOnUtc",
           "shadow": "created_on"
+        },
+        {
+          "primary": "UpdatedBy",
+          "shadow": "updated_by_id"
         },
         {
           "primary": "UpdatedOn",
@@ -127,6 +147,10 @@
           "shadow": "last_sync_on"
         },
         {
+          "primary": "Source",
+          "shadow": "source_id"
+        },
+        {
           "primary": "DeviceId",
           "shadow": "device_id"
         },
@@ -135,8 +159,28 @@
           "shadow": "is_receipt_print"
         },
         {
+          "primary": "Warehouse",
+          "shadow": "warehouse_id"
+        },
+        {
+          "primary": "DeletedBy",
+          "shadow": "deleted_by_id"
+        },
+        {
+          "primary": "DeletedOnUtc",
+          "shadow": "deleted_on"
+        },
+        {
           "primary": "GuestCount",
           "shadow": "guest_count"
+        },
+        {
+          "primary": "InvoiceOrderType",
+          "shadow": "invoice_order_type_id"
+        },
+        {
+          "primary": "PosTable",
+          "shadow": "pos_table_id"
         },
         {
           "primary": "IsLiability",
@@ -175,6 +219,14 @@
           "shadow": "refund_reason"
         },
         {
+          "primary": "DiscountedBy",
+          "shadow": "discounted_by_id"
+        },
+        {
+          "primary": "RefundedBy",
+          "shadow": "refunded_by_id"
+        },
+        {
           "primary": "PurchaseOrder",
           "shadow": "purchase_order"
         },
@@ -207,6 +259,10 @@
           "shadow": "bank_surcharge"
         },
         {
+          "primary": "BankSurchargeExcludingTax",
+          "shadow": "bank_surcharge_excluding_tax"
+        },
+        {
           "primary": "RoundingExclTax",
           "shadow": "rounding_excl_tax"
         },
@@ -219,12 +275,28 @@
           "shadow": "is_total_excluding_tip_amount"
         },
         {
-          "primary": "CompletedOn",
+          "primary": "CompletedOnUtc",
           "shadow": "completed_on"
+        },
+        {
+          "primary": "ServedBy",
+          "shadow": "served_by_id"
         },
         {
           "primary": "ReferenceNumber",
           "shadow": "reference_number"
+        },
+        {
+          "primary": "SentOnUtc",
+          "shadow": "sent_on"
+        },
+        {
+          "primary": "ReadyOnUtc",
+          "shadow": "ready_on"
+        },
+        {
+          "primary": "FinalisedOnUtc",
+          "shadow": "finalised_on"
         },
         {
           "primary": "ReservationId",
@@ -247,10 +319,6 @@
           "shadow": "pickup_time"
         },
         {
-          "primary": "BankSurchargeExcludingTax",
-          "shadow": "bank_surcharge_excluding_tax"
-        },
-        {
           "primary": "OriginalOrderId",
           "shadow": "original_order_id"
         }
@@ -264,6 +332,10 @@
         "shadow": "unique_code"
       },
       "columns": [
+        {
+          "primary": "ProductVariant",
+          "shadow": "product_variant_id"
+        },
         {
           "primary": "Description",
           "shadow": "description"

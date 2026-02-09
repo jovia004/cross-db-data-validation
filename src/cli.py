@@ -68,7 +68,7 @@ def run(config_path=None, verbose: bool = False) -> None:
         )
         sys.exit(1)
 
-    uniquecodes = [str(inv.get("UniqueCode", "")) for inv in primary_invoices]
+    uniquecodes = [str(inv.get("UniqueCode", "")).lower() for inv in primary_invoices]
     uniquecodes = [u for u in uniquecodes if u]
     if not uniquecodes:
         logger.error("No UniqueCode values in Primary invoices. Cannot fetch Shadow data.")

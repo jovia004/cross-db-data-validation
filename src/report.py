@@ -77,9 +77,17 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
             "Some fields have type differences (e.g. number vs string). "
             "Check if values are semantically the same."
         )
+    # Status for badges: missing_in_shadow | differences | match
+    if missing:
+        status = "missing_in_shadow"
+    elif all_diffs or detail_missing or detail_extra or pay_missing or pay_extra:
+        status = "differences"
+    else:
+        status = "match"
     return {
         "invoice_guid": guid,
         "missing_in_shadow": missing,
+        "status": status,
         "differences": rows,
         "notes": notes,
         "recommendations": [
@@ -96,13 +104,26 @@ def build_html(sections: list[dict[str, Any]], run_datetime: datetime) -> str:
         autoescape=select_autoescape(["html", "xml"]),
     )
     template = env.get_template("report.html")
-    toc_entries = [
-        {"index": i + 1, "guid": s.get("invoice_guid", ""), "anchor_id": f"invoice-{i + 1}"}
-        for i, s in enumerate(sections)
-    ]
     section_data = [_build_section_data(s) for s in sections]
+    # Executive summary counts
+    summary = {
+        "total": len(section_data),
+        "matched": sum(1 for s in section_data if s["status"] == "match"),
+        "with_differences": sum(1 for s in section_data if s["status"] == "differences"),
+        "missing_in_shadow": sum(1 for s in section_data if s["status"] == "missing_in_shadow"),
+    }
+    toc_entries = [
+        {
+            "index": i + 1,
+            "guid": section_data[i]["invoice_guid"],
+            "anchor_id": f"invoice-{i + 1}",
+            "status": section_data[i]["status"],
+        }
+        for i in range(len(section_data))
+    ]
     html = template.render(
         run_datetime=run_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        summary=summary,
         toc_entries=toc_entries,
         sections=section_data,
         compared_sources="SQL Server (Primary) vs PostgreSQL (Shadow)",
