@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoice Comparison Report</title>
   <style>
+    @page { size: A4; margin: 1.5cm; }
     :root {
       --color-text: #1a1a1a;
       --color-muted: #555;
@@ -245,6 +246,8 @@
       .table-wrapper {
         overflow: visible;
       }
+      thead { display: table-header-group; }
+      tbody tr { break-inside: avoid; page-break-inside: avoid; }
       .table-wrapper table {
         table-layout: fixed;
         width: 100%;
@@ -327,6 +330,14 @@
     <h3>⚠️ Key differences detected</h3>
     <div class="table-wrapper">
     <table>
+      <colgroup>
+        <col class="col-table" />
+        <col class="col-primary-field" />
+        <col class="col-shadow-field" />
+        <col class="col-sql-value" />
+        <col class="col-pg-value" />
+        <col class="col-diff-type" />
+      </colgroup>
       <thead>
         <tr>
           <th>Table</th>
