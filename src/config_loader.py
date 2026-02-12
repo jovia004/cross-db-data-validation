@@ -125,6 +125,12 @@ def validate_column_mapping(data: dict[str, Any]) -> list[str]:
                 errors.append(f"Table '{key}' must have '{field}'.")
         if "columns" in t and not isinstance(t.get("columns"), list):
             errors.append(f"Table '{key}' 'columns' must be a list.")
+        skipped = t.get("skipped_columns")
+        if skipped is not None:
+            if not isinstance(skipped, list):
+                errors.append(f"Table '{key}' 'skipped_columns' must be a list.")
+            elif not all(isinstance(x, str) for x in skipped):
+                errors.append(f"Table '{key}' 'skipped_columns' must contain only strings (primary column names).")
 
     if "sample_count" in data:
         sc = data["sample_count"]

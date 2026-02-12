@@ -184,6 +184,14 @@ def compare_rows(
     ]
 
 
+def _effective_columns(columns: list[dict[str, str]], skipped: Optional[list[str]] = None) -> list[dict[str, str]]:
+    """Return columns with skipped_columns (primary names) excluded; used for comparison and reporting."""
+    if not skipped:
+        return columns
+    skip_set = set(skipped)
+    return [c for c in columns if c.get("primary") not in skip_set]
+
+
 def compare_invoice_sections(
     mapping: dict[str, Any],
     primary_invoices: list[dict[str, Any]],
@@ -203,14 +211,25 @@ def compare_invoice_sections(
     - detail_row_keys_only_in_primary, detail_row_keys_only_in_shadow (business key values)
     - payment_rows_missing_in_shadow, payment_rows_extra_in_shadow (counts)
     - payment_row_keys_only_in_primary, payment_row_keys_only_in_shadow (business key values)
+    Columns listed in skipped_columns (by primary name) are excluded from comparison and reports.
     """
     tables = mapping.get("tables", {})
-    inv_cols = tables.get("invoice", {}).get("columns", [])
+    inv_cfg = tables.get("invoice", {})
+    inv_cols = _effective_columns(
+        inv_cfg.get("columns", []),
+        inv_cfg.get("skipped_columns"),
+    )
     detail_cfg = tables.get("invoice_detail_item", {})
-    detail_cols = detail_cfg.get("columns", [])
+    detail_cols = _effective_columns(
+        detail_cfg.get("columns", []),
+        detail_cfg.get("skipped_columns"),
+    )
     detail_bk = detail_cfg.get("business_key") or {}
     pay_cfg = tables.get("payment_transaction", {})
-    pay_cols = pay_cfg.get("columns", [])
+    pay_cols = _effective_columns(
+        pay_cfg.get("columns", []),
+        pay_cfg.get("skipped_columns"),
+    )
     pay_bk = pay_cfg.get("business_key") or {}
 
     def _norm_guid(g: Any) -> str:
