@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-REQUIRED_ENV = [
+ENVIRONMENTS = ("test", "prod")
+_ENV_BASE_KEYS = [
     "PRIMARY_DB_HOST",
     "PRIMARY_DB_PORT",
     "PRIMARY_DB_NAME",
@@ -24,6 +25,14 @@ REQUIRED_ENV = [
 ]
 
 
+def _required_env_vars(environment: str) -> list[str]:
+    """Return required env var names for the given environment (e.g. PRIMARY_DB_HOST_TEST)."""
+    suf = environment.strip().upper()
+    if suf not in ("TEST", "PROD"):
+        return []
+    return [f"{k}_{suf}" for k in _ENV_BASE_KEYS]
+
+
 def load_env() -> None:
     """Load .env from project root. Does not fail if .env is missing."""
     root = Path(__file__).resolve().parent.parent
@@ -31,13 +40,26 @@ def load_env() -> None:
     load_dotenv(env_path)
 
 
-def validate_env() -> list[str]:
+def validate_env(environment: str = "test") -> list[str]:
     """
-    Check that all required env vars are set (non-empty).
+    Check that all required env vars for the given environment are set (non-empty).
+    environment: "test" or "prod" (from config/column_mapping.json).
+    For "test", unsuffixed vars (e.g. PRIMARY_DB_HOST) are accepted as fallback.
     Returns list of missing variable names; empty if valid.
     """
     load_env()
-    missing = [name for name in REQUIRED_ENV if not os.getenv(name, "").strip()]
+    env = (environment or "test").strip().lower()
+    if env not in ENVIRONMENTS:
+        return [f"Invalid environment '{environment}'. Must be one of: {', '.join(ENVIRONMENTS)}"]
+    missing = []
+    suf = env.upper()
+    for key in _ENV_BASE_KEYS:
+        name_suffixed = f"{key}_{suf}"
+        val = os.getenv(name_suffixed, "").strip()
+        if not val and env == "test":
+            val = os.getenv(key, "").strip()
+        if not val:
+            missing.append(name_suffixed if env == "prod" else f"{name_suffixed} or {key}")
     return missing
 
 
@@ -59,29 +81,42 @@ def _normalize_host(host: str, default_port: str) -> tuple[str, str]:
     return s, default_port
 
 
-def get_db_config() -> dict[str, Any]:
-    """Return DB connection config from env. Call after validate_env() passes."""
+def get_db_config(environment: str = "test") -> dict[str, Any]:
+    """
+    Return DB connection config from env for the given environment.
+    environment: "test" or "prod". Call after validate_env(environment) passes.
+    """
     load_env()
+    env = (environment or "test").strip().lower()
+    if env not in ENVIRONMENTS:
+        env = "test"
+    suf = env.upper()
+
+    def _e(key: str, default: str = "") -> str:
+        val = os.getenv(f"{key}_{suf}", "").strip()
+        if not val and env == "test":
+            val = os.getenv(key, default).strip()
+        return val or default
     primary_host, primary_port = _normalize_host(
-        os.getenv("PRIMARY_DB_HOST", ""), os.getenv("PRIMARY_DB_PORT", "1433")
+        _e("PRIMARY_DB_HOST"), _e("PRIMARY_DB_PORT", "1433")
     )
     shadow_host, shadow_port = _normalize_host(
-        os.getenv("SHADOW_DB_HOST", ""), os.getenv("SHADOW_DB_PORT", "5432")
+        _e("SHADOW_DB_HOST"), _e("SHADOW_DB_PORT", "5432")
     )
     return {
         "primary": {
             "host": primary_host,
             "port": primary_port or "1433",
-            "database": os.getenv("PRIMARY_DB_NAME", ""),
-            "user": os.getenv("PRIMARY_DB_USER", ""),
-            "password": os.getenv("PRIMARY_DB_PASSWORD", ""),
+            "database": _e("PRIMARY_DB_NAME"),
+            "user": _e("PRIMARY_DB_USER"),
+            "password": _e("PRIMARY_DB_PASSWORD"),
         },
         "shadow": {
             "host": shadow_host,
             "port": shadow_port or "5432",
-            "database": os.getenv("SHADOW_DB_NAME", ""),
-            "user": os.getenv("SHADOW_DB_USER", ""),
-            "password": os.getenv("SHADOW_DB_PASSWORD", ""),
+            "database": _e("SHADOW_DB_NAME"),
+            "user": _e("SHADOW_DB_USER"),
+            "password": _e("SHADOW_DB_PASSWORD"),
         },
     }
 
@@ -137,24 +172,21 @@ def validate_column_mapping(data: dict[str, Any]) -> list[str]:
         if not isinstance(sc, int) or sc < 1:
             errors.append("sample_count must be a positive integer.")
 
+    if "environment" in data:
+        env = data["environment"]
+        if not isinstance(env, str) or env.strip().lower() not in ENVIRONMENTS:
+            errors.append(f"environment must be one of: {', '.join(ENVIRONMENTS)}.")
+
     return errors
 
 
 def load_config(config_path: Optional[Union[str, Path]] = None) -> dict[str, Any]:
     """
     Load full config: env (validated) + column mapping (validated).
-    Returns dict with keys: db (from get_db_config), mapping (column_mapping dict), sample_count.
+    Environment (test/prod) is read from config/column_mapping.json "environment" key.
+    Returns dict with keys: db (from get_db_config), mapping (column_mapping dict), sample_count, environment.
     Raises SystemExit-style messages via logger and raises ValueError on validation failure.
     """
-    missing_env = validate_env()
-    if missing_env:
-        msg = (
-            f"Configuration error: missing environment variable(s): {', '.join(missing_env)}. "
-            "Please set them in .env (see .env.example)."
-        )
-        logger.error(msg)
-        raise ValueError(msg)
-
     mapping_data = load_column_mapping(config_path)
     mapping_errors = validate_column_mapping(mapping_data)
     if mapping_errors:
@@ -166,12 +198,39 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> dict[str, Any
         logger.error(msg)
         raise ValueError(msg)
 
+    environment = (mapping_data.get("environment") or "test").strip().lower()
+    if environment not in ENVIRONMENTS:
+        environment = "test"
+
+    missing_env = validate_env(environment)
+    if missing_env:
+        logger.debug("Missing env vars: %s", ", ".join(missing_env))
+        if environment == "prod":
+            msg = (
+                "Production database settings are not set. "
+                "Open your .env file and add the connection details for production "
+                "(Primary and Shadow) using variable names that end with _PROD, for example: "
+                "PRIMARY_DB_HOST_PROD, PRIMARY_DB_NAME_PROD, PRIMARY_DB_USER_PROD, PRIMARY_DB_PASSWORD_PROD, "
+                "SHADOW_DB_HOST_PROD, SHADOW_DB_NAME_PROD, SHADOW_DB_USER_PROD, SHADOW_DB_PASSWORD_PROD. "
+                "You can copy the format from .env.example."
+            )
+        else:
+            msg = (
+                "Test database settings are not set. "
+                "Open your .env file and add the connection details for the test environment "
+                "(variables ending with _TEST, or the same names without a suffix). "
+                "See .env.example for the list of variable names."
+            )
+        logger.error(msg)
+        raise ValueError(msg)
+
     sample_count = int(mapping_data.get("sample_count", 10))
     if sample_count < 1:
         sample_count = 10
 
     return {
-        "db": get_db_config(),
+        "db": get_db_config(environment),
         "mapping": mapping_data,
         "sample_count": sample_count,
+        "environment": environment,
     }

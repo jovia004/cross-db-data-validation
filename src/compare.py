@@ -19,7 +19,7 @@ pass in the fetched lists.
 import json
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Optional, Union
 
 from deepdiff import DeepDiff
@@ -63,13 +63,37 @@ def _get_value_at_path(obj: Any, path: str) -> Any:
     return current
 
 
+def _normalize_datetime_to_utc_string(dt: datetime) -> str:
+    """Normalize datetime to canonical UTC ISO string so same instant compares equal."""
+    if dt.tzinfo is None:
+        # Naive: assume UTC (e.g. SQL Server CreatedOnUtc)
+        return dt.isoformat() + "+00:00"
+    # Aware: convert to UTC
+    return dt.astimezone(timezone.utc).isoformat()
+
+
 def _normalize_value(val: Any) -> Any:
-    """Convert date/datetime to ISO strings for safe diffing (as per doc)."""
+    """Convert date/datetime to ISO strings for safe diffing (as per doc).
+    Datetimes are normalized to UTC so same instant (e.g. 07:39:45 vs 07:39:45+00:00) compares equal.
+    """
     if val is None:
         return None
-    if isinstance(val, (date, datetime)):
+    if isinstance(val, datetime):
+        return _normalize_datetime_to_utc_string(val)
+    if isinstance(val, date):
         return val.isoformat()
+    # String that looks like ISO datetime: parse and canonicalize so UTC instant matches
+    if isinstance(val, str) and "T" in val and ("-" in val or "+" in val or "Z" in val):
+        try:
+            parsed = datetime.fromisoformat(val.replace("Z", "+00:00"))
+            return _normalize_datetime_to_utc_string(parsed)
+        except (ValueError, TypeError):
+            pass
     return val
+
+
+# Column names (primary/shadow logical key) compared case-insensitively so case-only GUIDs are not reported as differences
+CASE_INSENSITIVE_COMPARE_KEYS = frozenset({"UniqueCode", "UniqueId"})
 
 
 def row_to_mapped_dict(
@@ -108,6 +132,8 @@ def row_to_mapped_dict(
                         obj = row[base]
                     raw = _get_value_at_path(obj, shadow_col[len(base) + 1 :].strip("."))
             result[key] = _normalize_value(raw)
+        if key in CASE_INSENSITIVE_COMPARE_KEYS and isinstance(result[key], str):
+            result[key] = result[key].lower()
     return result
 
 
@@ -235,6 +261,12 @@ def compare_invoice_sections(
     def _norm_guid(g: Any) -> str:
         return str(g).lower() if g is not None else ""
 
+    def _norm_business_key(val: Any) -> str:
+        """Normalize business key for matching (e.g. GUIDs that differ only by case)."""
+        if val is None:
+            return ""
+        return str(val).strip().lower()
+
     shadow_inv_by_guid: dict[str, dict] = {}
     for r in shadow_invoices:
         g = r.get("invoice_guid")
@@ -289,10 +321,10 @@ def compare_invoice_sections(
         detail_row_keys_only_in_primary: list[Any] = []
         detail_row_keys_only_in_shadow: list[Any] = []
         if prim_bk_col and shadow_bk_col:
-            shadow_by_key = {str(r.get(shadow_bk_col)): r for r in shadow_detail_list}
+            shadow_by_key = {_norm_business_key(r.get(shadow_bk_col)): r for r in shadow_detail_list}
             for pr in prim_detail_list:
                 pk = pr.get(prim_bk_col)
-                sr = shadow_by_key.get(str(pk)) if pk is not None else None
+                sr = shadow_by_key.get(_norm_business_key(pk)) if pk is not None else None
                 if sr is None:
                     detail_rows_missing_in_shadow += 1
                     if pk is not None:
@@ -302,7 +334,8 @@ def compare_invoice_sections(
                 )
             for sr in shadow_detail_list:
                 sk = sr.get(shadow_bk_col)
-                if not any(pr.get(prim_bk_col) == sk for pr in prim_detail_list):
+                sk_norm = _norm_business_key(sk)
+                if not any(_norm_business_key(pr.get(prim_bk_col)) == sk_norm for pr in prim_detail_list):
                     detail_rows_extra_in_shadow += 1
                     if sk is not None:
                         detail_row_keys_only_in_shadow.append(sk)
@@ -329,10 +362,10 @@ def compare_invoice_sections(
         payment_row_keys_only_in_primary: list[Any] = []
         payment_row_keys_only_in_shadow: list[Any] = []
         if pay_prim_bk and pay_shadow_bk:
-            shadow_pay_by_key = {str(r.get(pay_shadow_bk)): r for r in shadow_pay_list}
+            shadow_pay_by_key = {_norm_business_key(r.get(pay_shadow_bk)): r for r in shadow_pay_list}
             for pr in prim_pay_list:
                 pk = pr.get(pay_prim_bk)
-                sr = shadow_pay_by_key.get(str(pk)) if pk is not None else None
+                sr = shadow_pay_by_key.get(_norm_business_key(pk)) if pk is not None else None
                 if sr is None:
                     payment_rows_missing_in_shadow += 1
                     if pk is not None:
@@ -342,7 +375,8 @@ def compare_invoice_sections(
                 )
             for sr in shadow_pay_list:
                 sk = sr.get(pay_shadow_bk)
-                if not any(pr.get(pay_prim_bk) == sk for pr in prim_pay_list):
+                sk_norm = _norm_business_key(sk)
+                if not any(_norm_business_key(pr.get(pay_prim_bk)) == sk_norm for pr in prim_pay_list):
                     payment_rows_extra_in_shadow += 1
                     if sk is not None:
                         payment_row_keys_only_in_shadow.append(sk)
