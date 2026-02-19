@@ -261,17 +261,13 @@
         word-break: break-word;
       }
       .table-wrapper th:nth-child(1),
-      .table-wrapper td:nth-child(1) { width: 10%; }
+      .table-wrapper td:nth-child(1) { width: 12%; }
       .table-wrapper th:nth-child(2),
-      .table-wrapper td:nth-child(2) { width: 14%; }
+      .table-wrapper td:nth-child(2) { width: 35%; }
       .table-wrapper th:nth-child(3),
-      .table-wrapper td:nth-child(3) { width: 14%; }
+      .table-wrapper td:nth-child(3) { width: 35%; }
       .table-wrapper th:nth-child(4),
-      .table-wrapper td:nth-child(4) { width: 22%; }
-      .table-wrapper th:nth-child(5),
-      .table-wrapper td:nth-child(5) { width: 22%; }
-      .table-wrapper th:nth-child(6),
-      .table-wrapper td:nth-child(6) { width: 18%; }
+      .table-wrapper td:nth-child(4) { width: 18%; }
       tr.diff-values_changed,
       tr.diff-only_in_primary,
       tr.diff-only_in_shadow,
@@ -307,7 +303,7 @@
         {% if e.status == 'match' %}<span class="badge badge-match">✅ Match</span>{% endif %}
         {% if e.status == 'differences' %}<span class="badge badge-differences">⚠️ Differences</span>{% endif %}
         {% if e.status == 'missing_in_shadow' %}<span class="badge badge-missing">❌ Missing in Shadow</span>{% endif %}
-        <a href="#{{ e.anchor_id }}" class="toc-guid">Invoice {{ e.index }}: {{ e.guid }}</a>
+        <a href="#{{ e.anchor_id }}" class="toc-guid">Invoice {{ e.index }}: {{ e.invoice_id }}</a>
       </li>
       {% endfor %}
     </ul>
@@ -316,7 +312,7 @@
   {% for section in sections %}
   <section id="invoice-{{ loop.index }}">
     <div class="section-header">
-      <h2>🧾 Invoice GUID: {{ section.invoice_guid }}</h2>
+      <h2>🧾 InvoiceId: {{ section.invoice_id }} | Invoice GUID: {{ section.invoice_guid }}</h2>
       {% if section.status == 'match' %}<span class="badge badge-match">✅ Match</span>{% endif %}
       {% if section.status == 'differences' %}<span class="badge badge-differences">⚠️ Differences</span>{% endif %}
       {% if section.status == 'missing_in_shadow' %}<span class="badge badge-missing">❌ Missing in Shadow</span>{% endif %}
@@ -332,19 +328,15 @@
     <table>
       <colgroup>
         <col class="col-table" />
-        <col class="col-primary-field" />
-        <col class="col-shadow-field" />
-        <col class="col-sql-value" />
-        <col class="col-pg-value" />
+        <col class="col-sql" />
+        <col class="col-pg" />
         <col class="col-diff-type" />
       </colgroup>
       <thead>
         <tr>
           <th>Table</th>
-          <th>Primary field (SQL Server)</th>
-          <th>Shadow field (PostgreSQL)</th>
-          <th>SQL Server value</th>
-          <th>PostgreSQL value</th>
+          <th>SQL Server</th>
+          <th>PostgreSQL</th>
           <th>Difference type</th>
         </tr>
       </thead>
@@ -352,10 +344,8 @@
         {% for row in section.differences %}
         <tr class="diff-{{ row.difference_type }}">
           <td>{{ row.table_name }}</td>
-          <td>{{ row.primary_field }}</td>
-          <td>{{ row.shadow_field }}</td>
-          <td>{{ row.sql_server_value }}</td>
-          <td>{{ row.postgresql_value }}</td>
+          <td>{{ row.sql_server_cell }}</td>
+          <td>{{ row.postgresql_cell }}</td>
           <td class="difference-type">{{ row.difference_type }}</td>
         </tr>
         {% endfor %}

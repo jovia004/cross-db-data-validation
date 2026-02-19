@@ -32,9 +32,15 @@ def setup_logging(verbose: bool = False) -> None:
     logging.getLogger("fontTools").setLevel(logging.WARNING)
 
 
-def run(config_path=None, verbose: bool = False) -> None:
+def run(
+    config_path=None,
+    verbose: bool = False,
+    invoice_ids: list[int] | None = None,
+) -> None:
     """
     Run the full flow: load config, fetch from Primary and Shadow, compare, write report.
+    If invoice_ids is non-empty, only those Primary InvoiceIds are extracted and compared.
+    Otherwise sample_count from config is used (today → last 3 days → last 7 days, or random).
     Exits with 0 on success, 1 on validation/connection/data error (after logging).
     """
     setup_logging(verbose=verbose)
@@ -49,10 +55,10 @@ def run(config_path=None, verbose: bool = False) -> None:
     primary_conf = db_cfg["primary"]
     shadow_conf = db_cfg["shadow"]
 
-    # Fetch from Primary
+    # Fetch from Primary (filtered by invoice_ids when provided)
     try:
         primary_invoices, primary_details, primary_payments = fetch_primary_data(
-            primary_conf, mapping
+            primary_conf, mapping, invoice_ids=invoice_ids
         )
     except Exception as e:
         logger.error(
@@ -133,8 +139,16 @@ def main() -> None:
         action="store_true",
         help="Verbose (debug) logging.",
     )
+    parser.add_argument(
+        "-i", "--invoice-id",
+        dest="invoice_ids",
+        type=int,
+        action="append",
+        metavar="ID",
+        help="Primary DB InvoiceId to include. Can be repeated. If any are given, only these invoices are extracted, compared and reported; otherwise sample_count from config is used.",
+    )
     args = parser.parse_args()
-    run(config_path=None, verbose=args.verbose)
+    run(config_path=None, verbose=args.verbose, invoice_ids=args.invoice_ids or None)
 
 
 if __name__ == "__main__":

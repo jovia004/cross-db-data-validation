@@ -32,6 +32,8 @@ def _format_cell(val: Any) -> str:
 def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
     """Prepare one invoice section for the template: TOC label, anchor id, diffs table, notes."""
     guid = section.get("invoice_guid", "")
+    primary_inv = section.get("primary_invoice") or {}
+    invoice_id = primary_inv.get("InvoiceId", "")
     missing = section.get("missing_in_shadow", False)
     all_diffs: list[tuple[str, str, str, Any, Any, str]] = []
     all_diffs.extend(section.get("invoice_diffs", []))
@@ -40,10 +42,8 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
     rows = [
         {
             "table_name": table_name,
-            "primary_field": prim_f,
-            "shadow_field": shadow_f,
-            "sql_server_value": _format_cell(pv),
-            "postgresql_value": _format_cell(sv),
+            "sql_server_cell": f"{{{prim_f}: {_format_cell(pv)}}}",
+            "postgresql_cell": f"{{{shadow_f}: {_format_cell(sv)}}}",
             "difference_type": dt,
         }
         for table_name, prim_f, shadow_f, pv, sv, dt in all_diffs
@@ -85,6 +85,7 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
     else:
         status = "match"
     return {
+        "invoice_id": invoice_id,
         "invoice_guid": guid,
         "missing_in_shadow": missing,
         "status": status,
@@ -115,7 +116,7 @@ def build_html(sections: list[dict[str, Any]], run_datetime: datetime) -> str:
     toc_entries = [
         {
             "index": i + 1,
-            "guid": section_data[i]["invoice_guid"],
+            "invoice_id": section_data[i]["invoice_id"],
             "anchor_id": f"invoice-{i + 1}",
             "status": section_data[i]["status"],
         }

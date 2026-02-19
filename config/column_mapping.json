@@ -9,6 +9,7 @@
         "primary": "UniqueCode",
         "shadow": "invoice_guid"
       },
+      "skipped_columns": [],
       "columns": [
         {
           "primary": "InvoiceId",
@@ -27,11 +28,11 @@
           "shadow": "customer_id"
         },
         {
-          "primary": "CompanyId",
+          "primary": "Company",
           "shadow": "company_id"
         },
         {
-          "primary": "PaymentMethodId",
+          "primary": "PaymentMethod",
           "shadow": "payment_method_id"
         },
         {
@@ -331,6 +332,7 @@
         "primary": "UniqueCode",
         "shadow": "unique_code"
       },
+      "skipped_columns": [],
       "columns": [
         {
           "primary": "ProductVariant",
@@ -458,6 +460,7 @@
         "primary": "UniqueId",
         "shadow": "unique_id"
       },
+      "skipped_columns": ["PaymentTransactionId"],
       "columns": [
         {
           "primary": "PaymentTransactionId",

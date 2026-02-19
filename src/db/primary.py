@@ -118,10 +118,12 @@ def _fetch_invoice_ids_date_tier(
 def fetch_primary_data(
     db_config: dict[str, Any],
     mapping: dict[str, Any],
+    invoice_ids: list[int] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """
-    Fetch data from Primary (SQL Server): N random invoices (today → last 3 days → last 7 days),
-    then detail items and payment transactions.
+    Fetch data from Primary (SQL Server).
+    If invoice_ids is non-empty, fetch only those InvoiceIds; otherwise use sample_count
+    (today → last 3 days → last 7 days, or random).
     Returns (invoice_rows, detail_rows, payment_rows).
     """
     tables = mapping.get("tables", {})
@@ -145,7 +147,20 @@ def fetch_primary_data(
     conn = _get_connection(db_config)
     try:
         cursor = conn.cursor()
-        if date_col:
+        if invoice_ids:
+            # Specific InvoiceIds requested: fetch only those
+            logger.info("Fetching %s invoice(s) by InvoiceId: %s.", len(invoice_ids), invoice_ids)
+            placeholders = ",".join("?" for _ in invoice_ids)
+            sql_invoice = (
+                f"SELECT [{id_col}], [{unique_code_col}] FROM {primary_invoice} WHERE [{id_col}] IN ({placeholders})"
+            )
+            cursor.execute(sql_invoice, invoice_ids)
+            columns = [c[0] for c in cursor.description]
+            invoice_rows = []
+            for row in cursor.fetchall():
+                d = dict(zip(columns, row))
+                invoice_rows.append({"InvoiceId": d.get(id_col), "UniqueCode": d.get(unique_code_col)})
+        elif date_col:
             logger.info(
                 "Selecting up to %s invoices: today, then last 3 days, then last 7 days (date column: %s).",
                 sample_count,
