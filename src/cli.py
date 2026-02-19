@@ -50,6 +50,9 @@ def run(
     except ValueError:
         sys.exit(1)
 
+    environment = cfg.get("environment", "test")
+    logger.info("Environment: %s", environment)
+
     db_cfg = cfg["db"]
     mapping = cfg["mapping"]
     primary_conf = db_cfg["primary"]

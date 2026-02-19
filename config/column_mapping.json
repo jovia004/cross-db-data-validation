@@ -1,4 +1,5 @@
 {
+  "environment": "test",
   "sample_count": 3,
   "invoice_date_column": "CreatedOn",
   "tables": {
@@ -460,7 +461,7 @@
         "primary": "UniqueId",
         "shadow": "unique_id"
       },
-      "skipped_columns": ["PaymentTransactionId"],
+      "skipped_columns": ["PaymentTransactionId","CreatedOn","UpdatedOn"],
       "columns": [
         {
           "primary": "PaymentTransactionId",

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 Check connectivity to Primary (SQL Server) and Shadow (PostgreSQL).
-Loads .env from project root; does not require column_mapping.json.
-Usage: python3 check_connections.py
+Uses environment (test/prod) from config/column_mapping.json, or --env.
+Usage: python3 check_connections.py [--env test|prod]
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -13,7 +14,13 @@ _root = Path(__file__).resolve().parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from src.config_loader import get_db_config, load_env, validate_env
+from src.config_loader import (
+    get_db_config,
+    load_env,
+    load_column_mapping,
+    validate_env,
+    ENVIRONMENTS,
+)
 
 
 def check_primary(conf: dict) -> tuple[bool, str]:
@@ -50,18 +57,40 @@ def check_shadow(conf: dict) -> tuple[bool, str]:
         return (False, str(e))
 
 
+def _get_environment() -> str:
+    """Resolve environment: CLI --env, or config/column_mapping.json, or 'test'."""
+    parser = argparse.ArgumentParser(description="Check DB connectivity for test or prod.")
+    parser.add_argument(
+        "--env",
+        choices=ENVIRONMENTS,
+        default=None,
+        help="Override environment (default: from config/column_mapping.json, else test)",
+    )
+    args = parser.parse_args()
+    if args.env:
+        return args.env
+    try:
+        mapping = load_column_mapping()
+        env = (mapping.get("environment") or "test").strip().lower()
+        return env if env in ENVIRONMENTS else "test"
+    except FileNotFoundError:
+        return "test"
+
+
 def main() -> None:
     load_env()
-    missing = validate_env()
+    environment = _get_environment()
+    missing = validate_env(environment)
     if missing:
-        print("ERROR: Missing env variables:", ", ".join(missing))
-        print("Set them in .env (see .env.example).")
+        print("ERROR: Missing env variables for environment", repr(environment) + ":", ", ".join(missing))
+        print("Set them in .env (see .env.example). Use *_TEST / *_PROD suffix.")
         sys.exit(1)
 
-    config = get_db_config()
+    config = get_db_config(environment)
     primary_conf = config["primary"]
     shadow_conf = config["shadow"]
 
+    print(f"Environment: {environment}")
     print("Checking database connections (from .env)...\n")
 
     # Primary
