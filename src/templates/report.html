@@ -6,6 +6,7 @@
   <title>Invoice Comparison Report</title>
   <style>
     @page { size: A4; margin: 1.5cm; }
+    * { box-sizing: border-box; }
     :root {
       --color-text: #1a1a1a;
       --color-muted: #555;
@@ -95,7 +96,7 @@
     }
     .toc a {
       color: var(--color-link);
-      text-decoration: none;
+      text-decoration: underline;
     }
     .toc a:hover {
       text-decoration: underline;
@@ -124,6 +125,13 @@
       padding: 0.2rem 0.5rem;
       border-radius: 4px;
       white-space: nowrap;
+    }
+    /* TOC: fixed badge width so invoice text starts in a straight line (wide enough for "Missing in Shadow") */
+    .toc li .badge {
+      width: 13.5em;
+      min-width: 13.5em;
+      text-align: center;
+      box-sizing: border-box;
     }
     .badge-match {
       background: #d4edda;
@@ -218,11 +226,15 @@
         padding: 0.5rem;
         max-width: 100%;
       }
-      /* PDF: Executive Summary – avoid flex collapse, keep stats on one line */
+      /* PDF: Executive Summary – 2 lines: "X invoices compared" then "0 match 1 with differences 2 missing in Shadow" */
       .exec-summary .stats {
         display: block;
       }
-      .exec-summary .stat {
+      .exec-summary .stat:first-child {
+        display: block;
+        margin-bottom: 0.35rem;
+      }
+      .exec-summary .stat:not(:first-child) {
         display: inline-block;
         margin-right: 1.25rem;
         white-space: nowrap;
@@ -242,15 +254,21 @@
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      /* PDF: difference table – fit all 6 columns, prevent last 2 from being cut off */
+      /* PDF: difference table – keep within page margins, prevent overflow */
       .table-wrapper {
-        overflow: visible;
+        overflow: hidden;
+        max-width: 100%;
+        width: 100%;
+      }
+      section {
+        overflow: hidden;
       }
       thead { display: table-header-group; }
       tbody tr { break-inside: avoid; page-break-inside: avoid; }
       .table-wrapper table {
         table-layout: fixed;
         width: 100%;
+        max-width: 100%;
         font-size: 0.7rem;
       }
       .table-wrapper th,
@@ -259,15 +277,16 @@
         overflow: hidden;
         word-wrap: break-word;
         word-break: break-word;
+        max-width: 0;
       }
       .table-wrapper th:nth-child(1),
-      .table-wrapper td:nth-child(1) { width: 12%; }
+      .table-wrapper td:nth-child(1) { width: 14%; }
       .table-wrapper th:nth-child(2),
-      .table-wrapper td:nth-child(2) { width: 35%; }
+      .table-wrapper td:nth-child(2) { width: 33%; }
       .table-wrapper th:nth-child(3),
-      .table-wrapper td:nth-child(3) { width: 35%; }
+      .table-wrapper td:nth-child(3) { width: 33%; }
       .table-wrapper th:nth-child(4),
-      .table-wrapper td:nth-child(4) { width: 18%; }
+      .table-wrapper td:nth-child(4) { width: 20%; }
       tr.diff-values_changed,
       tr.diff-only_in_primary,
       tr.diff-only_in_shadow,
@@ -275,8 +294,12 @@
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      a[href^="#"] {
-        color: #333;
+      /* Keep TOC links visibly blue and underlined in PDF */
+      .toc a[href^="#"] {
+        color: #0066cc;
+        text-decoration: underline;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
     }
   </style>
@@ -288,7 +311,7 @@
   <div class="exec-summary">
     <h2>📈 Executive Summary</h2>
     <div class="stats">
-      <span class="stat"><span class="stat-num">{{ summary.total }}</span> invoice{{ 's' if summary.total != 1 else '' }} compared</span>
+      <span class="stat">📊 <span class="stat-num">{{ summary.total }}</span> invoice{{ 's' if summary.total != 1 else '' }} compared</span>
       <span class="stat">✅ <span class="stat-num">{{ summary.matched }}</span> match</span>
       <span class="stat">⚠️ <span class="stat-num">{{ summary.with_differences }}</span> with differences</span>
       <span class="stat">❌ <span class="stat-num">{{ summary.missing_in_shadow }}</span> missing in Shadow</span>
@@ -296,7 +319,7 @@
   </div>
 
   <nav class="toc">
-    <h2>📑 Invoices in this run</h2>
+    <h2>📑 Invoices in this execution</h2>
     <ul>
       {% for e in toc_entries %}
       <li>

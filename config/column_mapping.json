@@ -9,7 +9,7 @@
         "primary": "UniqueCode",
         "shadow": "invoice_guid"
       },
-      "skipped_columns": [],
+      "skipped_columns": ["InvoiceId"],
       "columns": [
         {
           "primary": "InvoiceId",
