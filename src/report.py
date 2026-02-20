@@ -9,6 +9,14 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 logger = logging.getLogger(__name__)
 
+# Primary columns that are converted from company timezone to UTC before comparison; show * in report.
+COMPANY_TZ_CONVERTED_FIELDS = {
+    ("Invoice", "UpdatedOn"),
+    ("Payment transaction", "CreatedOnUtc"),
+    ("Payment transaction", "CreatedOn"),
+    ("Payment transaction", "UpdatedOn"),
+}
+
 # WeasyPrint optional for PDF (can fail if system deps missing, e.g. libgobject)
 try:
     from weasyprint import HTML as WeasyHTML
@@ -39,15 +47,21 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
     all_diffs.extend(section.get("invoice_diffs", []))
     all_diffs.extend(section.get("detail_diffs", []))
     all_diffs.extend(section.get("payment_diffs", []))
-    rows = [
-        {
+    company_tz_applied = section.get("company_tz_conversion_applied", False)
+    has_converted_tz = False
+    rows = []
+    for table_name, prim_f, shadow_f, pv, sv, dt in all_diffs:
+        if company_tz_applied and (table_name, prim_f) in COMPANY_TZ_CONVERTED_FIELDS:
+            has_converted_tz = True
+            sql_cell = f"{{{prim_f}: {_format_cell(pv)}}}*"
+        else:
+            sql_cell = f"{{{prim_f}: {_format_cell(pv)}}}"
+        rows.append({
             "table_name": table_name,
-            "sql_server_cell": f"{{{prim_f}: {_format_cell(pv)}}}",
+            "sql_server_cell": sql_cell,
             "postgresql_cell": f"{{{shadow_f}: {_format_cell(sv)}}}",
             "difference_type": dt,
-        }
-        for table_name, prim_f, shadow_f, pv, sv, dt in all_diffs
-    ]
+        })
     notes: list[str] = []
     if missing:
         notes.append("This invoice was not found in Shadow. Data below is from Primary only.")
@@ -71,6 +85,8 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
         notes.append("Payment rows: " + ". ".join(parts))
     if not all_diffs and not missing and not (detail_missing or detail_extra or pay_missing or pay_extra):
         notes.append("No differences detected for this invoice.")
+    if has_converted_tz:
+        notes.append("(*) The Primary value marked with * is the datetime converted from company timezone to UTC for comparison.")
     type_mismatches = [r for r in rows if r["difference_type"] == "type_mismatch"]
     if type_mismatches:
         notes.append(
@@ -138,7 +154,7 @@ def write_report(
 ) -> tuple[str, str]:
     """
     Generate HTML and PDF reports; save to output_dir with execution datetime in filename.
-    Returns (path_to_html, path_to_pdf). PDF path may be same base with .pdf if WeasyPrint available.
+    Returns (path_to_html, path_to_pdf). path_to_pdf is empty string if no PDF was written.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -158,14 +174,16 @@ def write_report(
         )
         raise
 
-    pdf_path = output_dir / f"{base_name}.pdf"
+    pdf_path_out = ""
     if HAS_WEASYPRINT:
+        pdf_path = output_dir / f"{base_name}.pdf"
         try:
             WeasyHTML(string=html_content, base_url=str(output_dir)).write_pdf(pdf_path)
             logger.info("Wrote PDF report: %s", pdf_path)
+            pdf_path_out = str(pdf_path)
         except Exception as e:
             logger.warning("Could not generate PDF: %s. HTML report was saved.", e)
     else:
         logger.warning("WeasyPrint not available; only HTML report was generated.")
 
-    return str(html_path), str(pdf_path)
+    return str(html_path), pdf_path_out

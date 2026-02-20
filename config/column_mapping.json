@@ -1,7 +1,12 @@
 {
   "environment": "test",
-  "sample_count": 3,
+  "sample_count": 20,
   "invoice_date_column": "CreatedOn",
+  "company_timezone": {
+    "primary_table": "company",
+    "primary_id_column": "companyid",
+    "timezone_column": "timezone"
+  },
   "tables": {
     "invoice": {
       "primary_table": "Invoice",
@@ -380,7 +385,7 @@
           "shadow": "delivered_amount"
         },
         {
-          "primary": "CreatedOn",
+          "primary": "CreatedOnUtc",
           "shadow": "created_on"
         },
         {
@@ -461,7 +466,7 @@
         "primary": "UniqueId",
         "shadow": "unique_id"
       },
-      "skipped_columns": ["PaymentTransactionId","CreatedOn","UpdatedOn"],
+      "skipped_columns": ["PaymentTransactionId"],
       "columns": [
         {
           "primary": "PaymentTransactionId",

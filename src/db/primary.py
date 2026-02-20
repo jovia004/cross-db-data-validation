@@ -115,16 +115,60 @@ def _fetch_invoice_ids_date_tier(
     return result[:sample_count]
 
 
+def fetch_company_timezones(
+    cursor,
+    mapping: dict[str, Any],
+    company_ids: list[Any],
+) -> dict[Any, str]:
+    """
+    Fetch timezone per company from Primary. company_ids = list of company IDs (e.g. from Invoice.Company).
+    Returns dict company_id -> timezone string (e.g. 'Australia/Sydney').
+    If config company_timezone is missing or company_ids empty, returns {}.
+    """
+    if not company_ids:
+        return {}
+    cfg = mapping.get("company_timezone") or {}
+    table = cfg.get("primary_table", "company")
+    id_col = cfg.get("primary_id_column", "companyid")
+    tz_col = cfg.get("timezone_column", "timezone")
+    placeholders = ",".join("?" for _ in company_ids)
+    sql = f"SELECT [{id_col}], [{tz_col}] FROM [{table}] WHERE [{id_col}] IN ({placeholders})"
+    try:
+        cursor.execute(sql, company_ids)
+        cols = [c[0] for c in cursor.description]
+        # Column names from SQL Server may differ in casing (e.g. CompanyId vs companyid)
+        col_lower = {str(c).lower(): c for c in cols if c}
+        id_key = col_lower.get(id_col.lower()) or id_col
+        tz_key = col_lower.get(tz_col.lower()) or tz_col
+        result = {}
+        for row in cursor.fetchall():
+            d = dict(zip(cols, row))
+            cid = d.get(id_key)
+            tz = d.get(tz_key)
+            if cid is not None and tz is not None:
+                result[cid] = str(tz).strip()
+        return result
+    except Exception as e:
+        logger.warning(
+            "Could not fetch company timezones from Primary (%s). "
+            "Datetime comparison will show differences for UpdatedOn/CreatedOnUtc. %s",
+            table,
+            e,
+        )
+        return {}
+
+
 def fetch_primary_data(
     db_config: dict[str, Any],
     mapping: dict[str, Any],
     invoice_ids: list[int] | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[Any, str]]:
     """
     Fetch data from Primary (SQL Server).
     If invoice_ids is non-empty, fetch only those InvoiceIds; otherwise use sample_count
     (today → last 3 days → last 7 days, or random).
-    Returns (invoice_rows, detail_rows, payment_rows).
+    Returns (invoice_rows, detail_rows, payment_rows, company_timezones).
+    company_timezones maps company_id -> timezone string for converting company-local datetimes to UTC.
     """
     tables = mapping.get("tables", {})
     invoice_cfg = tables.get("invoice", {})
@@ -182,7 +226,7 @@ def fetch_primary_data(
 
         if not invoice_rows:
             logger.warning("No invoices returned from Primary.")
-            return ([], [], [])
+            return ([], [], [], {})
 
         invoice_ids = [r["InvoiceId"] for r in invoice_rows]
         placeholders = ",".join("?" for _ in invoice_ids)
@@ -193,6 +237,26 @@ def fetch_primary_data(
         cols = [c[0] for c in cursor.description]
         invoice_rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
         logger.info("Fetched %s invoices from Primary (full rows).", len(invoice_rows))
+
+        # Company timezones for converting company-local datetimes to UTC (Invoice.UpdatedOn, Payment.CreatedOnUtc, Payment.UpdatedOn)
+        company_col = next(
+            (c.get("primary") for c in invoice_cfg.get("columns", []) if c.get("shadow") == "company_id"),
+            "Company",
+        )
+        # Invoice row keys from SELECT * may differ in casing (e.g. Company vs company)
+        def _company_id(inv):
+            key = next((k for k in inv if str(k).lower() == company_col.lower()), None)
+            return inv.get(key) if key else None
+        company_ids = list({_company_id(inv) for inv in invoice_rows if _company_id(inv) is not None})
+        company_timezones = fetch_company_timezones(cursor, mapping, company_ids)
+        if company_timezones:
+            logger.info("Fetched timezones for %s company/companies from Primary.", len(company_timezones))
+        elif company_ids:
+            logger.warning(
+                "No company timezones loaded for %s company ID(s). Check company_timezone config and company table (e.g. table name, companyid/timezone columns). "
+                "Invoice.UpdatedOn and Payment.CreatedOnUtc/UpdatedOn will compare raw Primary (company TZ) vs Shadow (UTC).",
+                len(company_ids),
+            )
 
         sql_detail = f"SELECT * FROM {primary_detail} WHERE [{detail_fk_col}] IN ({placeholders})"
         cursor.execute(sql_detail, invoice_ids)
@@ -206,6 +270,6 @@ def fetch_primary_data(
         payment_rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
         logger.info("Fetched %s payment transaction rows from Primary.", len(payment_rows))
 
-        return (invoice_rows, detail_rows, payment_rows)
+        return (invoice_rows, detail_rows, payment_rows, company_timezones)
     finally:
         conn.close()

@@ -40,10 +40,12 @@ Copy `.env.example` to `.env` in that folder and fill in your database credentia
 
 ## 4. Configuration
 
+- **Environment:** In **`config/column_mapping.json`** the `environment` key selects which DB credentials to use: `"test"` (variables ending with `_TEST` or unsuffixed) or `"prod"` (variables ending with `_PROD`). See `.env.example` for the variable names.
 - **Column mapping:** Edit **`config/column_mapping.json`** to define:
   - `sample_count`: number of invoices to compare per run (default 10).
   - `invoice_date_column`: (optional) Primary table date column used for “today → last 3 days → last 7 days” sampling (e.g. `"CreatedOn"`). If omitted, sampling is random from the whole table.
   - For each table pair: `primary_table`, `shadow_table`, `business_key` (for detail and payment tables), and `columns` (list of `{ "primary": "...", "shadow": "..." }` for flat or JSON paths).
+  - **Optional `skipped_columns`:** Per table, a list of primary column names to exclude from comparison and the report (e.g. internal IDs you don’t care to diff).
   - **If you get “Invalid column name 'InvoiceId'”:** Your SQL Server detail/payment tables may use a different column name for the invoice reference. Under `tables.invoice_detail_item` and/or `tables.payment_transaction` set `primary_invoice_fk_column` to the actual column name (e.g. `"InvoiceID"`). Optionally under `tables.invoice` set `primary_invoice_id_column` and `primary_invoice_unique_code_column` if those differ from `"InvoiceId"` and `"UniqueCode"`.
 
 ---
@@ -68,7 +70,26 @@ From the project root:
 python run.py
 ```
 
+**Options:**
+
+- **`-v` / `--verbose`** — Enable debug logging.
+- **`-i ID` / `--invoice-id ID`** — Run comparison only for the given Primary DB InvoiceId(s). Can be repeated. If any `-i` are provided, `sample_count` is ignored and only these invoices are extracted, compared, and reported.
+
+**Example:** Compare only invoices 100 and 200 with verbose logging:
+
+```bash
+python run.py -v -i 100 -i 200
+```
+
 Reports are written to **`reports/`** with a filename that includes the run datetime (e.g. `report_2026-02-05_14-30-00.html` and `.pdf` if WeasyPrint is available).
+
+**Check connections (optional):** To verify database connectivity before running a full comparison:
+
+```bash
+python check_connections.py
+```
+
+Use `--env test` or `--env prod` to override the environment from `config/column_mapping.json`.
 
 ---
 

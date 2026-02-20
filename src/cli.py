@@ -24,7 +24,7 @@ def setup_logging(verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
-        format="%(levelname)s: %(message)s",
+        format="%(asctime)s %(levelname)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     # Avoid noisy third-party loggers
@@ -60,7 +60,7 @@ def run(
 
     # Fetch from Primary (filtered by invoice_ids when provided)
     try:
-        primary_invoices, primary_details, primary_payments = fetch_primary_data(
+        primary_invoices, primary_details, primary_payments, company_timezones = fetch_primary_data(
             primary_conf, mapping, invoice_ids=invoice_ids
         )
     except Exception as e:
@@ -96,7 +96,7 @@ def run(
         )
         sys.exit(1)
 
-    # Compare
+    # Compare (company_timezones used to convert Primary company-local datetimes to UTC for Invoice.UpdatedOn, Payment.CreatedOnUtc, Payment.UpdatedOn)
     logger.info("Comparing data for %s invoices.", len(primary_invoices))
     sections = compare_invoice_sections(
         mapping,
@@ -106,6 +106,7 @@ def run(
         shadow_invoices,
         shadow_items,
         shadow_payments,
+        company_timezones=company_timezones,
     )
 
     for s in sections:

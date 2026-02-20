@@ -39,8 +39,8 @@ Extract data from **SQL Server (Primary)** and **PostgreSQL (Shadow)**, compare 
 
 ## 4. Configuration
 
-- **Connections:** Env file (e.g. `.env`). Use `.env.example` with empty parameters; **`.env` in `.gitignore`** (never commit real credentials).
-- **Column mapping:** One file (e.g. `config/column_mapping.json`) with **one section per table**. Each section lists primary ↔ shadow column/path pairs and **business key** for table 2 & 3. Supports **flat columns** and **nested JSON paths** (e.g. `raw_json.Order.Items[0].DiscountForGst`).
+- **Connections:** Env file (e.g. `.env`). Use `.env.example` with empty parameters; **`.env` in `.gitignore`** (never commit real credentials). **Environment** (e.g. `test` or `prod`) is read from `config/column_mapping.json`; env vars use suffixes `_TEST` / `_PROD` (e.g. `PRIMARY_DB_HOST_TEST`, `PRIMARY_DB_HOST_PROD`).
+- **Column mapping:** One file (e.g. `config/column_mapping.json`) with **one section per table**. Each section lists primary ↔ shadow column/path pairs and **business key** for table 2 & 3. Supports **flat columns** and **nested JSON paths** (e.g. `raw_json.Order.Items[0].DiscountForGst`). Optional **skipped_columns** (list of primary column names) excludes those fields from comparison and the report.
 - **Sample size:** Configurable (default **10**).
 
 ---
@@ -144,7 +144,9 @@ cross_db_data_validation/
 │   │   └── shadow.py
 │   ├── compare.py
 │   └── report.py
+├── check_connections.py   # Optional: verify DB connectivity (test/prod)
 ├── requirements.txt
+├── run.py                  # Entry point: python run.py
 └── README.md
 ```
 
