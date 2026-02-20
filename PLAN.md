@@ -30,7 +30,7 @@ Extract data from **SQL Server (Primary)** and **PostgreSQL (Shadow)**, compare 
    - **On error:** Same as above; abort and log in user-understandable terms. Do not retry.
 5. **For each invoice:** Match rows by **business key** (table 2 & 3); compare using **column mapping** (flat + JSON paths); classify differences (values_changed, only_in_primary, only_in_shadow, type_mismatch).
    - **On error:** If mapping is wrong or a key is missing, log a clear warning (e.g. *"Invoice &lt;guid&gt;: no matching row in Shadow for business key &lt;key&gt;. Reported as only in Primary."*). Continue with other invoices; include this in the report section with a **user-understandable note**.
-6. **Build report:** One report (HTML + PDF) with **one section per invoice**, **TOC with hyperlinks** at top, and **execution datetime in filename**; save under **reports/**.
+6. **Build report:** One report (HTML + PDF) with **one section per invoice**, **TOC with hyperlinks** at top, and **execution datetime in filename**; save under **reports/**. The report header shows compared sources (Primary vs Shadow), **environment** (from `config/column_mapping.json`, e.g. Test or Prod), and **date of comparison** with timezone (e.g. `2026-02-20 16:31:17 EST`).
    - **On error:** If file write fails, abort and log (e.g. *"Could not write report to reports/. Check folder exists and permissions."*).
 
 **Logging:** At each step, log progress and errors with levels (INFO/WARNING/ERROR). Every message must be a **clear, user-understandable sentence** (no raw stack traces in console unless in debug mode). **Reporting** (console messages, report notes, and error text) must use **plain, understandable language** so a non-developer can act on it.

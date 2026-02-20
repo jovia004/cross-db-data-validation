@@ -138,7 +138,7 @@ sequenceDiagram
 | **Config Loader** | Reads .env and column_mapping.json; validates; exposes to extract/compare. |
 | **Match** | For table 2 & 3, pair rows by business key from column mapping. |
 | **DeepDiff** | Compare normalized row dicts; map result to values_changed, only_in_primary, only_in_shadow, type_mismatch. |
-| **Report** | One HTML + one PDF per run; section per invoice; TOC links; filename includes execution datetime. |
+| **Report** | One HTML + one PDF per run; section per invoice; TOC links; filename includes execution datetime. Header shows compared sources (Primary vs Shadow), environment (from config), and run datetime with timezone. |
 
 ---
 

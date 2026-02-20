@@ -340,7 +340,7 @@
       {% if section.status == 'differences' %}<span class="badge badge-differences">⚠️ Differences</span>{% endif %}
       {% if section.status == 'missing_in_shadow' %}<span class="badge badge-missing">❌ Missing in Shadow</span>{% endif %}
     </div>
-    <p class="meta">Compared sources: SQL Server (Field: UniqueCode) / PostgreSQL (Field: invoice_guid)</p>
+    <p class="meta">Compared sources: SQL Server (Field: UniqueCode) / PostgreSQL (Field: invoice_guid) in {{ environment }} environment</p>
 
     <h3>📝 Summary</h3>
     <p>This section compares data for the above invoice between Primary (SQL Server) and Shadow (PostgreSQL).</p>

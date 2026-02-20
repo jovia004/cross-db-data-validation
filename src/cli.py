@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # Add project root so "src" and config paths resolve
@@ -32,14 +33,25 @@ def setup_logging(verbose: bool = False) -> None:
     logging.getLogger("fontTools").setLevel(logging.WARNING)
 
 
+def _parse_date_yyyymmdd(value: str) -> str:
+    """Parse YYYYMMDD into YYYY-MM-DD. Raises ValueError if invalid."""
+    if len(value) != 8 or not value.isdigit():
+        raise ValueError("Date must be YYYYMMDD (e.g. 20250220).")
+    y, m, d = int(value[:4]), int(value[4:6]), int(value[6:8])
+    dt = datetime(y, m, d)
+    return dt.strftime("%Y-%m-%d")
+
+
 def run(
     config_path=None,
     verbose: bool = False,
     invoice_ids: list[int] | None = None,
+    on_or_after_date: str | None = None,
 ) -> None:
     """
     Run the full flow: load config, fetch from Primary and Shadow, compare, write report.
     If invoice_ids is non-empty, only those Primary InvoiceIds are extracted and compared.
+    If on_or_after_date is set (YYYY-MM-DD), up to sample_count invoices on or after that date are used.
     Otherwise sample_count from config is used (today → last 3 days → last 7 days, or random).
     Exits with 0 on success, 1 on validation/connection/data error (after logging).
     """
@@ -58,10 +70,10 @@ def run(
     primary_conf = db_cfg["primary"]
     shadow_conf = db_cfg["shadow"]
 
-    # Fetch from Primary (filtered by invoice_ids when provided)
+    # Fetch from Primary (filtered by invoice_ids or on_or_after_date when provided)
     try:
         primary_invoices, primary_details, primary_payments, company_timezones = fetch_primary_data(
-            primary_conf, mapping, invoice_ids=invoice_ids
+            primary_conf, mapping, invoice_ids=invoice_ids, on_or_after_date=on_or_after_date
         )
     except Exception as e:
         logger.error(
@@ -72,9 +84,16 @@ def run(
         sys.exit(1)
 
     if not primary_invoices:
-        logger.error(
-            "No invoices found in Primary. Check that the Invoice table has data."
-        )
+        if on_or_after_date:
+            logger.error(
+                "No invoices found in Primary with invoice date on or after %s. "
+                "Try a different date or check the Invoice table and invoice_date_column in config.",
+                on_or_after_date,
+            )
+        else:
+            logger.error(
+                "No invoices found in Primary. Check that the Invoice table has data."
+            )
         sys.exit(1)
 
     uniquecodes = [str(inv.get("UniqueCode", "")).lower() for inv in primary_invoices]
@@ -119,7 +138,7 @@ def run(
     # Report
     reports_dir = _project_root / "reports"
     try:
-        html_path, pdf_path = write_report(sections, reports_dir)
+        html_path, pdf_path = write_report(sections, reports_dir, environment=environment)
         logger.info("Report saved: %s", html_path)
         if pdf_path:
             logger.info("PDF saved: %s", pdf_path)
@@ -151,8 +170,26 @@ def main() -> None:
         metavar="ID",
         help="Primary DB InvoiceId to include. Can be repeated. If any are given, only these invoices are extracted, compared and reported; otherwise sample_count from config is used.",
     )
+    parser.add_argument(
+        "-d", "--date",
+        dest="on_or_after_date",
+        type=str,
+        metavar="YYYYMMDD",
+        help="Use invoices with invoice date on or after this date (YYYYMMDD). Up to sample_count are taken; if fewer exist, all are compared and reported.",
+    )
     args = parser.parse_args()
-    run(config_path=None, verbose=args.verbose, invoice_ids=args.invoice_ids or None)
+    on_or_after = None
+    if args.on_or_after_date:
+        try:
+            on_or_after = _parse_date_yyyymmdd(args.on_or_after_date)
+        except ValueError as e:
+            parser.error(str(e))
+    run(
+        config_path=None,
+        verbose=args.verbose,
+        invoice_ids=args.invoice_ids or None,
+        on_or_after_date=on_or_after,
+    )
 
 
 if __name__ == "__main__":

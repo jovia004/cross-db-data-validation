@@ -114,8 +114,16 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_html(sections: list[dict[str, Any]], run_datetime: datetime) -> str:
-    """Render full HTML report with TOC and sections. Uses Jinja2 template."""
+def build_html(
+    sections: list[dict[str, Any]],
+    run_datetime: datetime,
+    environment: str = "test",
+) -> str:
+    """Render full HTML report with TOC and sections. Uses Jinja2 template.
+
+    environment is shown in the report header (e.g. "Test" / "Prod"). run_datetime
+    is formatted with local timezone (e.g. "2026-02-20 16:31:17 EST").
+    """
     env = Environment(
         loader=PackageLoader("src", "templates"),
         autoescape=select_autoescape(["html", "xml"]),
@@ -138,12 +146,18 @@ def build_html(sections: list[dict[str, Any]], run_datetime: datetime) -> str:
         }
         for i in range(len(section_data))
     ]
+    env_display = environment.strip().capitalize()
+    compared_sources = f"SQL Server (Primary) vs PostgreSQL (Shadow) in {env_display} environment"
+    # Show timezone: use local timezone if datetime is naive
+    dt = run_datetime.astimezone() if run_datetime.tzinfo is None else run_datetime
+    run_datetime_str = dt.strftime("%Y-%m-%d %H:%M:%S %Z")
     html = template.render(
-        run_datetime=run_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        run_datetime=run_datetime_str,
         summary=summary,
         toc_entries=toc_entries,
         sections=section_data,
-        compared_sources="SQL Server (Primary) vs PostgreSQL (Shadow)",
+        compared_sources=compared_sources,
+        environment=env_display,
     )
     return html
 
@@ -151,9 +165,12 @@ def build_html(sections: list[dict[str, Any]], run_datetime: datetime) -> str:
 def write_report(
     sections: list[dict[str, Any]],
     output_dir: Union[str, Path],
+    environment: str = "test",
 ) -> tuple[str, str]:
     """
     Generate HTML and PDF reports; save to output_dir with execution datetime in filename.
+
+    environment (from config/column_mapping.json) is included in the report header.
     Returns (path_to_html, path_to_pdf). path_to_pdf is empty string if no PDF was written.
     """
     output_dir = Path(output_dir)
@@ -162,7 +179,7 @@ def write_report(
     stamp = run_dt.strftime("%Y-%m-%d_%H-%M-%S")
     base_name = f"report_{stamp}"
 
-    html_content = build_html(sections, run_dt)
+    html_content = build_html(sections, run_dt, environment=environment)
     html_path = output_dir / f"{base_name}.html"
     try:
         html_path.write_text(html_content, encoding="utf-8")

@@ -81,7 +81,9 @@ python run.py
 python run.py -v -i 100 -i 200
 ```
 
-Reports are written to **`reports/`** with a filename that includes the run datetime (e.g. `report_2026-02-05_14-30-00.html` and `.pdf` if WeasyPrint is available).
+Reports are written to **`reports/`** with a filename that includes the run datetime (e.g. `report_2026-02-05_14-30-00.html` and `.pdf` if WeasyPrint is available). Each report header shows:
+- **Compared sources:** SQL Server (Primary) vs PostgreSQL (Shadow) in *&lt;Environment&gt;* environment (e.g. Test or Prod, from `config/column_mapping.json`).
+- **Date of comparison:** Run date and time with timezone (e.g. `2026-02-20 16:31:17 EST`).
 
 **Check connections (optional):** To verify database connectivity before running a full comparison:
 
