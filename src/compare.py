@@ -13,7 +13,7 @@ pass in the fetched lists.
   OriginalOrderId) are treated as equivalent; numeric pairs that are equal (e.g. 18.9 vs 18.9000)
   are treated as equivalent; UUIDs that differ only by casing (e.g. B76CC2C5-... vs b76cc2c5-...)
   are treated as equivalent; only other differences are reported.
-- Company-timezone datetimes: Invoice.UpdatedOn and Payment.CreatedOnUtc, Payment.UpdatedOn
+- Company-timezone datetimes: Invoice.UpdatedOn and Payment.CreatedOn, Payment.UpdatedOn
   are stored in company timezone in SQL and in UTC in PG. When company_timezones is provided,
   Primary values are converted to UTC before comparison.
 - Matching: by invoice GUID; detail items and payments grouped by invoice GUID,
@@ -155,7 +155,7 @@ CASE_INSENSITIVE_COMPARE_KEYS = frozenset({"UniqueCode", "UniqueId"})
 # Primary columns stored in company timezone (SQL); Shadow stores UTC. We convert Primary to UTC before compare.
 COMPANY_TZ_DATETIME_COLUMNS = {
     "invoice": ["UpdatedOn"],
-    "payment_transaction": ["CreatedOnUtc", "CreatedOn", "UpdatedOn"],
+    "payment_transaction": ["CreatedOn", "UpdatedOn"],
 }
 
 
@@ -477,7 +477,7 @@ def compare_invoice_sections(
     """
     For each primary invoice, find matching shadow by GUID; compare all three tables
     using pre-extracted data (no DB connections). Optional company_timezones (company_id -> timezone
-    string) is used to convert Primary company-local datetimes (Invoice.UpdatedOn, Payment.CreatedOnUtc,
+    string) is used to convert Primary company-local datetimes (Invoice.UpdatedOn, Payment.CreatedOn,
     Payment.UpdatedOn) to UTC before comparing with Shadow (which stores UTC). Returns list of section dicts, each with:
     - invoice_guid, primary_invoice, shadow_invoice
     - invoice_diffs, detail_diffs, payment_diffs (list of (field, primary_val, shadow_val, diff_type))

@@ -115,6 +115,34 @@ def _fetch_invoice_ids_date_tier(
     return result[:sample_count]
 
 
+def _fetch_invoice_ids_on_or_after_date(
+    cursor,
+    primary_invoice: str,
+    date_col: str,
+    on_or_after_date: str,
+    sample_count: int,
+    id_col: str,
+    unique_code_col: str,
+) -> List[dict]:
+    """
+    Fetch up to sample_count invoice IDs where invoice date is on or after on_or_after_date (YYYY-MM-DD).
+    Returns list of dicts with canonical keys "InvoiceId" and "UniqueCode".
+    """
+    sql = f"""
+        SELECT TOP (?) [{id_col}], [{unique_code_col}]
+        FROM {primary_invoice}
+        WHERE CAST([{date_col}] AS DATE) >= ?
+        ORDER BY NEWID()
+    """
+    cursor.execute(sql, (sample_count, on_or_after_date))
+    cols = [c[0] for c in cursor.description]
+    result = []
+    for row in cursor.fetchall():
+        d = dict(zip(cols, row))
+        result.append({"InvoiceId": d.get(id_col), "UniqueCode": d.get(unique_code_col)})
+    return result
+
+
 def fetch_company_timezones(
     cursor,
     mapping: dict[str, Any],
@@ -162,11 +190,13 @@ def fetch_primary_data(
     db_config: dict[str, Any],
     mapping: dict[str, Any],
     invoice_ids: list[int] | None = None,
+    on_or_after_date: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[Any, str]]:
     """
     Fetch data from Primary (SQL Server).
-    If invoice_ids is non-empty, fetch only those InvoiceIds; otherwise use sample_count
-    (today → last 3 days → last 7 days, or random).
+    If invoice_ids is non-empty, fetch only those InvoiceIds.
+    Else if on_or_after_date is set (YYYY-MM-DD), fetch up to sample_count invoices on or after that date.
+    Otherwise use sample_count (today → last 3 days → last 7 days, or random).
     Returns (invoice_rows, detail_rows, payment_rows, company_timezones).
     company_timezones maps company_id -> timezone string for converting company-local datetimes to UTC.
     """
@@ -204,6 +234,38 @@ def fetch_primary_data(
             for row in cursor.fetchall():
                 d = dict(zip(columns, row))
                 invoice_rows.append({"InvoiceId": d.get(id_col), "UniqueCode": d.get(unique_code_col)})
+        elif on_or_after_date:
+            if not date_col:
+                logger.warning(
+                    "on_or_after_date given but invoice_date_column not set in config. "
+                    "Falling back to random sample."
+                )
+                sql_invoice = (
+                    f"SELECT TOP ({sample_count}) [{id_col}], [{unique_code_col}] FROM {primary_invoice} ORDER BY NEWID()"
+                )
+                cursor.execute(sql_invoice)
+                columns = [c[0] for c in cursor.description]
+                invoice_rows = []
+                for row in cursor.fetchall():
+                    d = dict(zip(columns, row))
+                    invoice_rows.append({"InvoiceId": d.get(id_col), "UniqueCode": d.get(unique_code_col)})
+            else:
+                logger.info(
+                    "Selecting up to %s invoices on or after %s (date column: %s).",
+                    sample_count,
+                    on_or_after_date,
+                    date_col,
+                )
+                invoice_rows = _fetch_invoice_ids_on_or_after_date(
+                    cursor, primary_invoice, date_col, on_or_after_date, sample_count, id_col, unique_code_col
+                )
+                if invoice_rows and len(invoice_rows) < sample_count:
+                    logger.info(
+                        "Found %s invoice(s) on or after %s (requested up to %s). Comparing all fetched.",
+                        len(invoice_rows),
+                        on_or_after_date,
+                        sample_count,
+                    )
         elif date_col:
             logger.info(
                 "Selecting up to %s invoices: today, then last 3 days, then last 7 days (date column: %s).",
