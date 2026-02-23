@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # Primary columns that are converted from company timezone to UTC before comparison; show * in report.
 COMPANY_TZ_CONVERTED_FIELDS = {
     ("Invoice", "UpdatedOn"),
+    ("Invoice", "PickupTime"),
     ("Payment transaction", "CreatedOnUtc"),
     ("Payment transaction", "CreatedOn"),
     ("Payment transaction", "UpdatedOn"),
@@ -110,6 +111,7 @@ def _build_section_data(section: dict[str, Any]) -> dict[str, Any]:
         "recommendations": [
             "Use invoice_guid as the unique key for sync checks.",
             "If values differ, verify source data or replication.",
+            "Detail items with extras (Primary Parent set) are compared against the extras array in Shadow.",
         ],
     }
 

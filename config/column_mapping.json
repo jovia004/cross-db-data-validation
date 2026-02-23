@@ -1,6 +1,6 @@
 {
   "environment": "test",
-  "sample_count": 20,
+  "sample_count": 100,
   "invoice_date_column": "CreatedOn",
   "company_timezone": {
     "primary_table": "company",
@@ -457,7 +457,21 @@
           "shadow": "original_item_id"
         }
       ],
-      "primary_invoice_fk_column": "Invoice"
+      "primary_invoice_fk_column": "Invoice",
+      "parent_detail_column": "Parent",
+      "primary_detail_id_column": "Id",
+      "shadow_extras_column": "extras",
+      "extras_match_key_shadow": "extra_guid",
+      "extras_columns": [
+        { "primary": "ProductVariantSelectionValue", "shadow": "extra_id" },
+        { "primary": "Quantity", "shadow": "quantity" },
+        { "primary": "UniqueCode", "shadow": "extra_guid" },
+        { "primary": "TaxAmount", "shadow": "tax_amount" },
+        { "primary": "UnitPrice", "shadow": "unit_price" },
+        { "primary": "IsCancelled", "shadow": "is_cancelled" },
+        { "primary": "SubTotalExclTax", "shadow": "sub_total_excl_tax" },
+        { "primary": "SubTotalInclTax", "shadow": "sub_total_incl_tax" }
+      ]
     },
     "payment_transaction": {
       "primary_table": "PaymentTransaction",

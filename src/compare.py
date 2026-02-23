@@ -154,7 +154,7 @@ CASE_INSENSITIVE_COMPARE_KEYS = frozenset({"UniqueCode", "UniqueId"})
 
 # Primary columns stored in company timezone (SQL); Shadow stores UTC. We convert Primary to UTC before compare.
 COMPANY_TZ_DATETIME_COLUMNS = {
-    "invoice": ["UpdatedOn"],
+    "invoice": ["UpdatedOn", "PickupTime"],
     "payment_transaction": ["CreatedOn", "UpdatedOn"],
 }
 
@@ -456,12 +456,47 @@ def compare_rows(
     ]
 
 
+def compare_extra_to_shadow_object(
+    primary_row: dict[str, Any],
+    shadow_extra_obj: dict[str, Any],
+    extras_columns: list[dict[str, str]],
+    table_label: str,
+) -> list[tuple[str, str, str, Any, Any, str]]:
+    """
+    Compare one Primary extra row to one shadow extras[] element using extras_columns mapping.
+    Returns list of (table_label, primary_field, shadow_field, primary_value, shadow_value, difference_type).
+    """
+    primary_dict = row_to_mapped_dict(primary_row, extras_columns, "primary")
+    shadow_dict = row_to_mapped_dict(shadow_extra_obj, extras_columns, "shadow")
+    diff = DeepDiff(primary_dict, shadow_dict, ignore_order=True)
+    raw = _classify_diff(diff)
+    return [
+        (table_label, *_resolve_primary_shadow_names(f, extras_columns), pv, sv, dt)
+        for f, pv, sv, dt in raw
+    ]
+
+
 def _effective_columns(columns: list[dict[str, str]], skipped: Optional[list[str]] = None) -> list[dict[str, str]]:
     """Return columns with skipped_columns (primary names) excluded; used for comparison and reporting."""
     if not skipped:
         return columns
     skip_set = set(skipped)
     return [c for c in columns if c.get("primary") not in skip_set]
+
+
+def _parse_extras_array(raw: Any) -> list[dict[str, Any]]:
+    """Return extras as a list of dicts; parse JSON string if needed; return [] if null or not list."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [x for x in raw if isinstance(x, dict)]
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            return [x for x in parsed if isinstance(x, dict)] if isinstance(parsed, list) else []
+        except (TypeError, json.JSONDecodeError):
+            return []
+    return []
 
 
 def compare_invoice_sections(
@@ -605,7 +640,7 @@ def compare_invoice_sections(
         # Invoice-level comparison (Primary datetimes in company TZ converted to UTC when company_timezones provided)
         invoice_diffs = compare_rows(inv_primary, shadow_inv, inv_cols, "Invoice") if inv_cols else []
 
-        # Detail items: match by invoice GUID (already grouped), then by business key
+        # Detail items: match by invoice GUID (already grouped), then by business key (or by parent+extras when configured)
         prim_detail_list = primary_details_by_invoice.get(inv.get("InvoiceId"), [])
         shadow_detail_list = shadow_items_by_guid.get(guid_str, [])
         prim_bk_col = detail_bk.get("primary")
@@ -615,7 +650,85 @@ def compare_invoice_sections(
         detail_rows_extra_in_shadow = 0
         detail_row_keys_only_in_primary: list[Any] = []
         detail_row_keys_only_in_shadow: list[Any] = []
-        if prim_bk_col and shadow_bk_col:
+        parent_col = detail_cfg.get("parent_detail_column")
+        detail_id_col = detail_cfg.get("primary_detail_id_column")
+        shadow_extras_col = detail_cfg.get("shadow_extras_column")
+        extras_cols = detail_cfg.get("extras_columns", [])
+        extras_match_key = detail_cfg.get("extras_match_key_shadow", "extra_guid")
+        use_extras = bool(
+            prim_bk_col and shadow_bk_col and parent_col and detail_id_col and shadow_extras_col and extras_cols
+        )
+        if use_extras:
+            prim_detail_by_id = {}
+            for r in prim_detail_list:
+                kid = _row_get(r, detail_id_col)
+                if kid is not None:
+                    prim_detail_by_id[kid] = r
+            parent_rows = [r for r in prim_detail_list if _row_get(r, parent_col) is None or _row_get(r, parent_col) == ""]
+            extra_rows = [r for r in prim_detail_list if _row_get(r, parent_col) is not None and _row_get(r, parent_col) != ""]
+            shadow_by_key = {_norm_business_key(r.get(shadow_bk_col)): r for r in shadow_detail_list}
+            matched_shadow_extra_guids: set[str] = set()
+            extra_label = "Invoice detail item (extra)"
+            for pr in parent_rows:
+                pk = pr.get(prim_bk_col)
+                sr = shadow_by_key.get(_norm_business_key(pk)) if pk is not None else None
+                if sr is None:
+                    detail_rows_missing_in_shadow += 1
+                    if pk is not None:
+                        detail_row_keys_only_in_primary.append(pk)
+                detail_diffs.extend(
+                    compare_rows(pr, sr, detail_cols, "Invoice detail item") if detail_cols else []
+                )
+            for pr in extra_rows:
+                parent_id = _row_get(pr, parent_col)
+                parent_row = prim_detail_by_id.get(parent_id) if parent_id is not None else None
+                if parent_row is None:
+                    logger.warning(
+                        "Invoice detail item (extra) has Parent=%s but no matching row in same invoice; skipping.",
+                        parent_id,
+                    )
+                    continue
+                parent_unique_code = _row_get(parent_row, prim_bk_col)
+                shadow_row = shadow_by_key.get(_norm_business_key(parent_unique_code)) if parent_unique_code else None
+                if shadow_row is None:
+                    detail_rows_missing_in_shadow += 1
+                    if detail_cols:
+                        detail_diffs.extend(compare_rows(pr, None, extras_cols, extra_label))
+                else:
+                    extras_list = _parse_extras_array(shadow_row.get(shadow_extras_col))
+                    pr_key_norm = _norm_business_key(_row_get(pr, prim_bk_col))
+                    extra_obj = None
+                    for e in extras_list:
+                        if _norm_business_key(_row_get(e, extras_match_key)) == pr_key_norm:
+                            extra_obj = e
+                            break
+                    if extra_obj is not None:
+                        detail_diffs.extend(
+                            compare_extra_to_shadow_object(pr, extra_obj, extras_cols, extra_label)
+                        )
+                        matched_shadow_extra_guids.add(
+                            _norm_business_key(_row_get(extra_obj, extras_match_key))
+                        )
+                    else:
+                        detail_rows_missing_in_shadow += 1
+                        detail_diffs.extend(
+                            compare_rows(pr, None, extras_cols, extra_label)
+                        )
+            for sr in shadow_detail_list:
+                sk = sr.get(shadow_bk_col)
+                sk_norm = _norm_business_key(sk)
+                if not any(_norm_business_key(_row_get(pr, prim_bk_col)) == sk_norm for pr in parent_rows):
+                    detail_rows_extra_in_shadow += 1
+                    if sk is not None:
+                        detail_row_keys_only_in_shadow.append(sk)
+                    detail_diffs.extend(
+                        compare_rows({}, sr, detail_cols, "Invoice detail item") if detail_cols else []
+                    )
+                for extra in _parse_extras_array(sr.get(shadow_extras_col)):
+                    eg = _norm_business_key(_row_get(extra, extras_match_key))
+                    if eg and eg not in matched_shadow_extra_guids:
+                        detail_rows_extra_in_shadow += 1
+        elif prim_bk_col and shadow_bk_col:
             shadow_by_key = {_norm_business_key(r.get(shadow_bk_col)): r for r in shadow_detail_list}
             for pr in prim_detail_list:
                 pk = pr.get(prim_bk_col)
